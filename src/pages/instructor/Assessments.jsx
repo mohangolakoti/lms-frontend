@@ -63,6 +63,12 @@ const Assessments = () => {
     e.preventDefault();
     setFormError('');
 
+    // Validate courseId
+    if (!formData.courseId || formData.courseId.trim() === '') {
+      setFormError('Please select a course');
+      return;
+    }
+
     if (formData.questions.length === 0) {
       setFormError('Please add at least one question');
       return;
