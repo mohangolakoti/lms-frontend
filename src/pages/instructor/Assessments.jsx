@@ -128,7 +128,7 @@ const Assessments = () => {
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <span>📚 {assessment.courseId?.title || 'Course'}</span>
                       <span>📝 {assessment.questions?.length || 0} questions</span>
-                      <span>⏱️ {Math.floor((assessment.duration || 0) / 60)} min</span>
+                      <span>⏱️ {assessment.duration || 0} min</span>
                       <span>📊 {assessment.totalMarks} marks</span>
                       <Badge variant={assessment.visibility === 'published' ? 'success' : 'warning'}>
                         {assessment.visibility}

@@ -155,7 +155,7 @@ const AssessmentView = () => {
         <div className="flex items-center gap-4 text-sm text-gray-500">
           <span>📚 {assessment.courseId?.title || 'Course'}</span>
           <span>📝 {assessment.questions?.length || 0} questions</span>
-          <span>⏱️ {Math.floor((assessment.duration || 0) / 60)} minutes</span>
+          <span>⏱️ {(assessment.duration || 0)} minutes</span>
           <span>📊 Total Marks: {assessment.totalMarks}</span>
           <span>✅ Passing: {assessment.passingMarks}</span>
         </div>
@@ -181,7 +181,7 @@ const AssessmentView = () => {
           {assessment.questions && assessment.questions.length > 0 ? (
             <div className="space-y-6">
               {assessment.questions.map((question, index) => (
-                <div key={question._id || index} className="border border-gray-200 rounded-lg p-4">
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start gap-3 mb-3">
                     <span className="font-semibold text-gray-900">{index + 1}.</span>
                     <div className="flex-1">
@@ -197,10 +197,10 @@ const AssessmentView = () => {
                         <label key={optIndex} className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            name={`question-${question._id || index}`}
+                            name={`question-${index}`}
                             value={option}
-                            checked={answers[question._id || index] === option}
-                            onChange={(e) => handleAnswerChange(question._id || index, e.target.value)}
+                            checked={answers[index] === option}
+                            onChange={(e) => handleAnswerChange(index, e.target.value)}
                             className="text-primary-400 focus:ring-primary-400"
                           />
                           <span>{option}</span>
@@ -213,10 +213,10 @@ const AssessmentView = () => {
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
-                          name={`question-${question._id || index}`}
+                          name={`question-${index}`}
                           value="true"
-                          checked={answers[question._id || index] === 'true'}
-                          onChange={(e) => handleAnswerChange(question._id || index, e.target.value)}
+                          checked={answers[index] === 'true'}
+                          onChange={(e) => handleAnswerChange(index, e.target.value)}
                           className="text-primary-400 focus:ring-primary-400"
                         />
                         <span>True</span>
@@ -224,10 +224,10 @@ const AssessmentView = () => {
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
-                          name={`question-${question._id || index}`}
+                          name={`question-${index}`}
                           value="false"
-                          checked={answers[question._id || index] === 'false'}
-                          onChange={(e) => handleAnswerChange(question._id || index, e.target.value)}
+                          checked={answers[index] === 'false'}
+                          onChange={(e) => handleAnswerChange(index, e.target.value)}
                           className="text-primary-400 focus:ring-primary-400"
                         />
                         <span>False</span>
@@ -239,8 +239,8 @@ const AssessmentView = () => {
                       <textarea
                         className="input-field w-full"
                         rows={question.type === 'essay' ? 6 : 3}
-                        value={answers[question._id || index] || ''}
-                        onChange={(e) => handleAnswerChange(question._id || index, e.target.value)}
+                        value={answers[index] || ''}
+                        onChange={(e) => handleAnswerChange(index, e.target.value)}
                         placeholder="Type your answer here..."
                       />
                     </div>
@@ -256,9 +256,10 @@ const AssessmentView = () => {
         <Card title="Your Answers">
           <div className="space-y-6">
             {assessment.questions?.map((question, index) => {
-              const answer = submission.answers?.find(a => a.questionId === (question._id || index));
+              // Match answer by index since questions don't have _id
+              const answer = submission.answers?.find(a => a.questionId === index);
               return (
-                <div key={question._id || index} className="border border-gray-200 rounded-lg p-4">
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start gap-3 mb-3">
                     <span className="font-semibold text-gray-900">{index + 1}.</span>
                     <div className="flex-1">
