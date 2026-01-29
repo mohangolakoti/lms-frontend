@@ -28,6 +28,7 @@ import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import InstructorCourses from './pages/instructor/Courses';
 import CourseManagement from './pages/instructor/CourseManagement';
 import InstructorAssessments from './pages/instructor/Assessments';
+import AssessmentSubmissions from './pages/instructor/AssessmentSubmissions';
 import StudentProgress from './pages/instructor/StudentProgress';
 
 // Student Pages
@@ -108,6 +109,7 @@ function App() {
                     <Route path="courses" element={<InstructorCourses />} />
                     <Route path="courses/:id" element={<CourseManagement />} />
                     <Route path="assessments" element={<InstructorAssessments />} />
+                    <Route path="assessments/:assessmentId/submissions" element={<AssessmentSubmissions />} />
                     <Route path="progress" element={<StudentProgress />} />
                     <Route path="*" element={<Navigate to="/instructor/dashboard" replace />} />
                   </Routes>
