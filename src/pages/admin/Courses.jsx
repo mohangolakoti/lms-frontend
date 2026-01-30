@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminCourses } from '../../hooks/useCourses';
 import Table from '../../components/Table';
@@ -17,6 +17,8 @@ const Courses = () => {
   const { courses, loading, error, refetch } = useAdminCourses();
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
+    const [instructors, setInstructors] = useState([]);
+    const [loadingInstructors, setLoadingInstructors] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -26,6 +28,24 @@ const Courses = () => {
     instructorId: '',
   });
   const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    fetchInstructors();
+  }, []);
+
+  const fetchInstructors = async () => {
+    try {
+      setLoadingInstructors(true);
+      const response = await adminAPI.getInstructors();
+      if (response.data.success) {
+        setInstructors(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching instructors:', error);
+    } finally {
+      setLoadingInstructors(false);
+    }
+  };
 
   const handleOpenModal = (course = null) => {
     if (course) {
@@ -238,12 +258,20 @@ const Courses = () => {
             onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
             placeholder="https://example.com/image.jpg"
           />
-          <Input
-            label="Instructor ID"
+          <Select
+            label="Instructor"
             name="instructorId"
             value={formData.instructorId}
             onChange={(e) => setFormData({ ...formData, instructorId: e.target.value })}
-            placeholder="Leave empty to use current user"
+            options={[
+              { value: '', label: 'Select an instructor...' },
+              ...instructors.map(instructor => ({
+                value: instructor._id,
+                label: `${instructor.name} (${instructor.email})`
+              }))
+            ]}
+            required
+            disabled={loadingInstructors}
           />
         </form>
       </Modal>
