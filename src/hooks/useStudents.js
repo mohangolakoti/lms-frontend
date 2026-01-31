@@ -43,7 +43,15 @@ export const useStudent = (id) => {
       setLoading(true);
       const response = await adminAPI.getStudent(id);
       if (response.data.success) {
-        setStudent(response.data.data);
+        const data = response.data.data;
+        if (data?.student) {
+          setStudent({
+            ...data.student,
+            progress: data.progress || [],
+          });
+        } else {
+          setStudent(data);
+        }
       }
     } catch (error) {
       setError(error.response?.data?.error || 'Failed to fetch student');
