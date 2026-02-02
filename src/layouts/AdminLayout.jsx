@@ -17,6 +17,7 @@ const AdminLayout = ({ children }) => {
   const menuItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/admin/students', label: 'Students', icon: '👥' },
+    { path: '/admin/batches', label: 'Batches', icon: '🧩' },
     { path: '/admin/courses', label: 'Courses', icon: '📚' },
     { path: '/admin/instructors', label: 'Instructors', icon: '👨‍🏫' },
     { path: '/admin/announcements', label: 'Announcements', icon: '📢' },

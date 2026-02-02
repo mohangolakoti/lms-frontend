@@ -73,6 +73,12 @@ export const adminAPI = {
   getStudent: (id) => api.get(`/admin/students/${id}`),
   updateStudentStatus: (id, status) => 
     api.put(`/admin/students/${id}/status`, { status }),
+  approveStudent: (id) => api.put(`/admin/students/${id}/approve`),
+  rejectStudent: (id) => api.put(`/admin/students/${id}/reject`),
+  updateStudentAcademic: (id, data) => api.put(`/admin/students/${id}/update-academic`, data),
+  getBatches: (params) => api.get('/admin/batches', { params }),
+  createBatch: (data) => api.post('/admin/batches', data),
+  updateBatchStatus: (id, isActive) => api.put(`/admin/batches/${id}/status`, { isActive }),
   getCourses: () => api.get('/admin/courses'),
   createCourse: (data) => api.post('/admin/courses', data),
   updateCourse: (id, data) => api.put(`/admin/courses/${id}`, data),

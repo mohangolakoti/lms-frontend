@@ -22,6 +22,7 @@ import AdminCourses from './pages/admin/Courses';
 import CourseAnalytics from './pages/admin/CourseAnalytics';
 import Instructors from './pages/admin/Instructors';
 import AdminAnnouncements from './pages/admin/Announcements';
+import Batches from './pages/admin/Batches';
 
 // Instructor Pages
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
@@ -87,6 +88,7 @@ function App() {
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="students" element={<Students />} />
                     <Route path="students/:id" element={<StudentDetail />} />
+                    <Route path="batches" element={<Batches />} />
                     <Route path="courses" element={<AdminCourses />} />
                     <Route path="courses/:id/analytics" element={<CourseAnalytics />} />
                     <Route path="instructors" element={<Instructors />} />

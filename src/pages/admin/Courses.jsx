@@ -9,6 +9,7 @@ import Modal from '../../components/Modal';
 import Input from '../../components/Input';
 import Select from '../../components/Select';
 import Textarea from '../../components/Textarea';
+import MultiSelect from '../../components/MultiSelect';
 import { adminAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,8 +18,10 @@ const Courses = () => {
   const { courses, loading, error, refetch } = useAdminCourses();
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-    const [instructors, setInstructors] = useState([]);
-    const [loadingInstructors, setLoadingInstructors] = useState(false);
+  const [instructors, setInstructors] = useState([]);
+  const [loadingInstructors, setLoadingInstructors] = useState(false);
+  const [batches, setBatches] = useState([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -26,11 +29,13 @@ const Courses = () => {
     level: 'Beginner',
     thumbnailUrl: '',
     instructorId: '',
+    batches: [],
   });
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
     fetchInstructors();
+    fetchBatches();
   }, []);
 
   const fetchInstructors = async () => {
@@ -47,6 +52,20 @@ const Courses = () => {
     }
   };
 
+  const fetchBatches = async () => {
+    try {
+      setLoadingBatches(true);
+      const response = await adminAPI.getBatches({ limit: 100 });
+      const payload = response?.data?.data;
+      const items = Array.isArray(payload) ? payload : (payload?.data || []);
+      setBatches(items);
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
+
   const handleOpenModal = (course = null) => {
     if (course) {
       setEditingCourse(course);
@@ -57,6 +76,7 @@ const Courses = () => {
         level: course.level,
         thumbnailUrl: course.thumbnailUrl || '',
         instructorId: course.instructorId?._id || course.instructorId || '',
+        batches: (course.batches || []).map((batch) => batch._id || batch),
       });
     } else {
       setEditingCourse(null);
@@ -67,6 +87,7 @@ const Courses = () => {
         level: 'Beginner',
         thumbnailUrl: '',
         instructorId: '',
+        batches: [],
       });
     }
     setShowModal(true);
@@ -76,6 +97,11 @@ const Courses = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+
+    if (!formData.batches || formData.batches.length === 0) {
+      setFormError('Please select at least one batch');
+      return;
+    }
 
     try {
       if (editingCourse) {
@@ -251,6 +277,20 @@ const Courses = () => {
               required
             />
           </div>
+          <MultiSelect
+            label="Batches"
+            value={formData.batches}
+            onChange={(values) => setFormData({ ...formData, batches: values })}
+            options={batches.map((batch) => ({
+              value: batch._id,
+              label: batch.name,
+              disabled: !batch.isActive,
+            }))}
+            helperText="Only students from selected batches can access this course"
+            required
+            disabled={loadingBatches}
+            placeholder="Search batches..."
+          />
           <Input
             label="Thumbnail URL"
             name="thumbnailUrl"

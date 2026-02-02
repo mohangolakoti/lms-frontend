@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useInstructorCourses } from '../../hooks/useCourses';
 import Card from '../../components/Card';
@@ -8,8 +8,9 @@ import Modal from '../../components/Modal';
 import Input from '../../components/Input';
 import Textarea from '../../components/Textarea';
 import Select from '../../components/Select';
+import MultiSelect from '../../components/MultiSelect';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { instructorAPI } from '../../services/api';
+import { adminAPI, instructorAPI } from '../../services/api';
 
 const Courses = () => {
   const { courses, loading, error, refetch } = useInstructorCourses();
@@ -20,8 +21,29 @@ const Courses = () => {
     term: 'both',
     level: 'Beginner',
     thumbnailUrl: '',
+    batches: [],
   });
   const [formError, setFormError] = useState('');
+  const [batches, setBatches] = useState([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
+
+  useEffect(() => {
+    fetchBatches();
+  }, []);
+
+  const fetchBatches = async () => {
+    try {
+      setLoadingBatches(true);
+      const response = await adminAPI.getBatches({ limit: 100 });
+      const payload = response?.data?.data;
+      const items = Array.isArray(payload) ? payload : (payload?.data || []);
+      setBatches(items);
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
 
   const handleOpenModal = () => {
     setFormData({
@@ -30,6 +52,7 @@ const Courses = () => {
       term: 'both',
       level: 'Beginner',
       thumbnailUrl: '',
+      batches: [],
     });
     setFormError('');
     setShowModal(true);
@@ -38,6 +61,11 @@ const Courses = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+
+    if (!formData.batches || formData.batches.length === 0) {
+      setFormError('Please select at least one batch');
+      return;
+    }
 
     try {
       await instructorAPI.createCourse(formData);
@@ -167,6 +195,20 @@ const Courses = () => {
               required
             />
           </div>
+          <MultiSelect
+            label="Batches"
+            value={formData.batches}
+            onChange={(values) => setFormData({ ...formData, batches: values })}
+            options={batches.map((batch) => ({
+              value: batch._id,
+              label: batch.name,
+              disabled: !batch.isActive,
+            }))}
+            helperText="Students from selected batches can access this course"
+            required
+            disabled={loadingBatches}
+            placeholder="Search batches..."
+          />
           <Input
             label="Thumbnail URL"
             name="thumbnailUrl"

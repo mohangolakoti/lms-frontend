@@ -5,18 +5,22 @@ import StatCard from '../../components/StatCard';
 import Card from '../../components/Card';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Button from '../../components/Button';
+import Badge from '../../components/Badge';
 import { useAuth } from '../../context/AuthContext';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [assignedCourses, setAssignedCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchDashboard();
     fetchAnnouncements();
+    fetchAssignedCourses();
   }, []);
 
   const fetchDashboard = async () => {
@@ -41,6 +45,22 @@ const StudentDashboard = () => {
       }
     } catch (error) {
       console.error('Announcements error:', error);
+    }
+  };
+
+  const fetchAssignedCourses = async () => {
+    try {
+      setCoursesLoading(true);
+      const response = await studentAPI.getCourses();
+      if (response.data.success) {
+        const payload = response?.data?.data;
+        const items = Array.isArray(payload) ? payload : (payload?.data || []);
+        setAssignedCourses(items);
+      }
+    } catch (error) {
+      console.error('Assigned courses error:', error);
+    } finally {
+      setCoursesLoading(false);
     }
   };
 
@@ -103,41 +123,61 @@ const StudentDashboard = () => {
 
       {/* Learning Paths / Courses */}
       <Card title="Learning Paths" action={<Link to="/student/courses"><Button variant="outline">View All</Button></Link>}>
-        {dashboardData?.courses?.length === 0 ? (
+        {coursesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <LoadingSpinner size="md" />
+          </div>
+        ) : assignedCourses.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p>No courses assigned yet. Check back later!</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {dashboardData?.courses?.slice(0, 3).map((course) => (
-              <div
-                key={course.courseId}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">📚</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{course.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">Instructor: {course.instructor}</p>
-                    <div className="flex items-center gap-4 mt-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        course.completed 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {course.completed ? 'Completed' : `${Math.round(course.progress)}% Complete`}
-                      </span>
-                      <span className="text-xs text-gray-500">{course.level}</span>
+            {assignedCourses.slice(0, 3).map((course) => {
+              const courseId = course._id || course.courseId;
+              const batchNames = (course.batches || [])
+                .map((b) => b?.name)
+                .filter(Boolean);
+              const batchLabel = batchNames.length > 0 ? batchNames.join(', ') : 'N/A';
+
+              return (
+                <div
+                  key={courseId}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                      <span className="text-2xl">📚</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{course.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1">Instructor: {course.instructorId?.name || course.instructor || 'N/A'}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            course.completed 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {course.completed ? 'Completed' : `${Math.round(course.progress || 0)}% Complete`}
+                        </span>
+                        <Badge variant="info" className="cursor-help" title="Course eligibility based on your term">
+                          Term: {course.term}
+                        </Badge>
+                        <Badge variant="primary" className="cursor-help" title="Only students in these batches can access this course">
+                          Batch: {batchLabel}
+                        </Badge>
+                        <span className="text-xs text-gray-500">{course.level}</span>
+                      </div>
                     </div>
                   </div>
+                  <Link to={`/student/courses/${courseId}`}>
+                    <Button variant="primary">Continue Learning →</Button>
+                  </Link>
                 </div>
-                <Link to={`/student/courses/${course.courseId}`}>
-                  <Button variant="primary">Continue Learning →</Button>
-                </Link>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>

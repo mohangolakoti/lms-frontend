@@ -32,7 +32,10 @@ const Table = ({ columns, data, loading, emptyMessage = 'No data available' }) =
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {data.map((row, rowIndex) => (
-            <tr key={rowIndex} className="hover:bg-gray-50">
+            <tr
+              key={rowIndex}
+              className={`hover:bg-gray-50 ${row.rowClass || ''}`}
+            >
               {columns.map((column, colIndex) => (
                 <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {column.render ? column.render(row) : row[column.accessor]}
