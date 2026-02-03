@@ -5,6 +5,7 @@ import { getRoleDashboard } from '../utils/roleRedirect';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AuthStatusDialog from '../components/AuthStatusDialog';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ const Login = () => {
     password: '',
   });
   const [error, setError] = useState('');
+  const [authStatus, setAuthStatus] = useState(null); // 'PENDING_APPROVAL', 'BLOCKED', 'REJECTED', or null
   const [loading, setLoading] = useState(false);
   const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -28,11 +30,13 @@ const Login = () => {
       [e.target.name]: e.target.value,
     });
     setError('');
+    setAuthStatus(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setAuthStatus(null);
     setLoading(true);
 
     const result = await login(formData.email, formData.password);
@@ -51,9 +55,25 @@ const Login = () => {
         }, 500);
       }
     } else {
-      setError(result.error);
+      // Map backend error to auth status
+      const errorMsg = result.error || '';
+      if (errorMsg.includes('pending admin approval')) {
+        setAuthStatus('PENDING_APPROVAL');
+      } else if (errorMsg.includes('blocked')) {
+        setAuthStatus('BLOCKED');
+      } else if (errorMsg.includes('rejected')) {
+        setAuthStatus('REJECTED');
+      } else {
+        setError(result.error);
+      }
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setAuthStatus(null);
+    setError('');
+    setFormData({ email: '', password: '' });
   };
 
   return (
@@ -76,6 +96,7 @@ const Login = () => {
           </p>
         </div>
         <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
+          {authStatus && <AuthStatusDialog status={authStatus} onRetry={handleRetry} />}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
               {error}
