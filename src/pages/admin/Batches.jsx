@@ -54,7 +54,9 @@ const Batches = () => {
 
     try {
       setSubmitting(true);
+      console.log("creating batch", name);
       await adminAPI.createBatch({ name });
+      console.log("created batch");
       addToast('success', 'Batch created successfully');
       setShowCreateModal(false);
       setNewBatchName('');
@@ -68,10 +70,12 @@ const Batches = () => {
 
   const handleToggleActive = async (batch) => {
     try {
+      console.log("toggling", batch);
       await adminAPI.updateBatchStatus(batch._id, !batch.isActive);
       addToast('success', `Batch ${!batch.isActive ? 'activated' : 'deactivated'} successfully`);
       await fetchBatches();
     } catch (err) {
+      console.log("error", err);
       addToast('error', err.response?.data?.message || err.response?.data?.error || 'Failed to update batch status');
     }
   };
