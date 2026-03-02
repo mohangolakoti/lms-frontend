@@ -1,6 +1,75 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { studentAPI } from '../services/api';
+
+const VIDEO_SOURCE_TYPES = {
+  YOUTUBE: 'youtube',
+  GOOGLE_DRIVE: 'google_drive',
+  DIRECT: 'direct',
+  UNSUPPORTED: 'unsupported',
+};
+
+const getYouTubeId = (url) => {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{6,})/i,
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{6,})/i,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{6,})/i,
+    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{6,})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+  return null;
+};
+
+const getGoogleDriveFileId = (url) => {
+  if (!url) return null;
+  const patterns = [
+    /(?:drive\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/i,
+    /(?:drive\.google\.com\/open\?id=)([a-zA-Z0-9_-]+)/i,
+    /(?:drive\.google\.com\/uc\?id=)([a-zA-Z0-9_-]+)/i,
+    /(?:drive\.google\.com\/uc\?export=download&id=)([a-zA-Z0-9_-]+)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+  return null;
+};
+
+const isDirectVideoUrl = (url) => {
+  if (!url) return false;
+  return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
+};
+
+const getVideoSource = (url) => {
+  const youtubeId = getYouTubeId(url);
+  if (youtubeId) {
+    return {
+      type: VIDEO_SOURCE_TYPES.YOUTUBE,
+      embedUrl: `https://www.youtube.com/embed/${youtubeId}?autoplay=0&controls=1&rel=0`,
+    };
+  }
+
+  const driveId = getGoogleDriveFileId(url);
+  if (driveId) {
+    return {
+      type: VIDEO_SOURCE_TYPES.GOOGLE_DRIVE,
+      embedUrl: `https://drive.google.com/file/d/${driveId}/preview`,
+    };
+  }
+
+  if (isDirectVideoUrl(url)) {
+    return {
+      type: VIDEO_SOURCE_TYPES.DIRECT,
+      src: url,
+    };
+  }
+
+  return { type: VIDEO_SOURCE_TYPES.UNSUPPORTED };
+};
 
 const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
   const { user } = useAuth();
@@ -8,6 +77,18 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
   const [lastWatchedSecond, setLastWatchedSecond] = useState(0);
   const [completed, setCompleted] = useState(lesson.completed || false);
   const progressIntervalRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const videoSource = useMemo(() => getVideoSource(lesson?.url), [lesson?.url]);
+
+  useEffect(() => {
+    setIsLoading(true);
+  }, [lesson?.url]);
+
+  useEffect(() => {
+    if (videoSource.type === VIDEO_SOURCE_TYPES.UNSUPPORTED) {
+      setIsLoading(false);
+    }
+  }, [videoSource.type]);
 
   useEffect(() => {
     // Disable right-click
@@ -89,7 +170,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
   }, []);
 
   useEffect(() => {
-    if (lesson.type === 'video' && videoRef.current) {
+    if (lesson.type === 'video' && videoSource.type === VIDEO_SOURCE_TYPES.DIRECT && videoRef.current) {
       // Resume from last watched position
       if (lesson.lastWatchedSecond) {
         videoRef.current.currentTime = lesson.lastWatchedSecond;
@@ -144,7 +225,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
         }
       };
     }
-  }, [lesson, courseId, lastWatchedSecond, completed, onProgressUpdate]);
+  }, [lesson, courseId, lastWatchedSecond, completed, onProgressUpdate, videoSource.type]);
 
   const handleMarkComplete = async () => {
     try {
@@ -165,28 +246,65 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
     if (lesson.type === 'video') {
       return (
         <div className="relative w-full" style={{ userSelect: 'none', position: 'relative' }}>
-          <video
-            ref={videoRef}
-            src={lesson.url}
-            controls
-            controlsList="nodownload noplaybackrate nofullscreen"
-            disablePictureInPicture
-            className="w-full h-auto"
-            style={{ 
-              pointerEvents: 'auto',
-              userSelect: 'none',
-              WebkitUserSelect: 'none',
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              return false;
-            }}
-            onDragStart={(e) => {
-              e.preventDefault();
-              return false;
-            }}
-          />
+          <div className="relative w-full aspect-video bg-black/5">
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+                Loading video...
+              </div>
+            )}
+            {videoSource.type === VIDEO_SOURCE_TYPES.DIRECT && (
+              <video
+                ref={videoRef}
+                src={videoSource.src}
+                controls
+                preload="metadata"
+                controlsList="nodownload noplaybackrate nofullscreen"
+                disablePictureInPicture
+                className="w-full h-full"
+                style={{ 
+                  pointerEvents: 'auto',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                }}
+                onLoadedData={() => setIsLoading(false)}
+                onCanPlay={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return false;
+                }}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              />
+            )}
+            {videoSource.type === VIDEO_SOURCE_TYPES.YOUTUBE && (
+              <iframe
+                src={videoSource.embedUrl}
+                className="w-full h-full border-0"
+                title={lesson.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                onLoad={() => setIsLoading(false)}
+              />
+            )}
+            {videoSource.type === VIDEO_SOURCE_TYPES.GOOGLE_DRIVE && (
+              <iframe
+                src={videoSource.embedUrl}
+                className="w-full h-full border-0"
+                title={lesson.title}
+                allow="autoplay"
+                onLoad={() => setIsLoading(false)}
+              />
+            )}
+            {videoSource.type === VIDEO_SOURCE_TYPES.UNSUPPORTED && (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-600">
+                This video source is not supported.
+              </div>
+            )}
+          </div>
           <Watermark user={user} />
         </div>
       );

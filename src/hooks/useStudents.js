@@ -8,7 +8,7 @@ export const useStudents = (filters = {}) => {
 
   useEffect(() => {
     fetchStudents();
-  }, [filters.status, filters.batch, filters.search, filters.approvalStatus]);
+  }, [filters.status, filters.batch, filters.search, filters.approvalStatus, filters.batchId]);
 
   const fetchStudents = async () => {
     try {

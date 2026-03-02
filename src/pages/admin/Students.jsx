@@ -13,6 +13,7 @@ const Students = () => {
   const [filters, setFilters] = useState({
     status: '',
     batch: '',
+    batchId: '',
     search: '',
     approvalStatus: 'pending',
   });
@@ -333,7 +334,7 @@ const Students = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <Input
             placeholder="Search by name or email..."
             value={filters.search}
@@ -357,9 +358,22 @@ const Students = () => {
             <option value="longTerm">Long Term</option>
             <option value="shortTerm">Short Term</option>
           </select>
+          <select
+            className="input-field"
+            value={filters.batchId}
+            onChange={(e) => setFilters({ ...filters, batchId: e.target.value })}
+            disabled={loadingBatches}
+          >
+            <option value="">All Batches</option>
+            {batches.map((batch) => (
+              <option key={batch._id} value={batch._id}>
+                {batch.name}
+              </option>
+            ))}
+          </select>
           <Button
             variant="secondary"
-            onClick={() => setFilters({ status: '', batch: '', search: '', approvalStatus: 'pending' })}
+            onClick={() => setFilters({ status: '', batch: '', batchId: '', search: '', approvalStatus: 'pending' })}
           >
             Clear Filters
           </Button>
