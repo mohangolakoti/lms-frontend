@@ -1,33 +1,54 @@
 import { useState } from 'react';
 import { adminAPI } from '../../services/api';
+import { useBatches } from '../../hooks/useBatches';
+import { useAnnouncements } from '../../hooks/useAnnouncements';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Textarea from '../../components/Textarea';
 import Select from '../../components/Select';
 import Modal from '../../components/Modal';
-import { useAdminCourses } from '../../hooks/useCourses';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import MultiSelect from '../../components/MultiSelect';
 
 const Announcements = () => {
-  const { courses } = useAdminCourses();
+  const { batches } = useBatches();
+  const { announcements, loading, error: fetchError, deleteAnnouncement, fetchAnnouncements } = useAnnouncements();
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     message: '',
-    target: 'global',
-    courseId: '',
-    pinned: false,
+    targetType: 'global',
+    batchIds: [],
+    deliveryChannels: [],
   });
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
+  const [deleting, setDeleting] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
     setSuccess('');
 
-    if (formData.target === 'course' && !formData.courseId) {
-      setFormError('Please select a course');
+    // Validation
+    if (!formData.title.trim()) {
+      setFormError('Title is required');
+      return;
+    }
+
+    if (!formData.message.trim()) {
+      setFormError('Message is required');
+      return;
+    }
+
+    if (formData.deliveryChannels.length === 0) {
+      setFormError('At least one delivery channel must be selected');
+      return;
+    }
+
+    if (formData.targetType === 'batch' && formData.batchIds.length === 0) {
+      setFormError('Please select at least one batch');
       return;
     }
 
@@ -35,29 +56,59 @@ const Announcements = () => {
       const payload = {
         title: formData.title,
         message: formData.message,
-        target: formData.target,
-        pinned: formData.pinned,
+        targetType: formData.targetType,
+        deliveryChannels: formData.deliveryChannels,
       };
-      if (formData.target === 'course') {
-        payload.courseId = formData.courseId;
+
+      if (formData.targetType === 'batch') {
+        payload.batchIds = formData.batchIds;
       }
 
       await adminAPI.createAnnouncement(payload);
-      setSuccess('Announcement created successfully!');
+      setSuccess('Announcement created successfully! Notifications are being sent.');
       setFormData({
         title: '',
         message: '',
-        target: 'global',
-        courseId: '',
-        pinned: false,
+        targetType: 'global',
+        batchIds: [],
+        deliveryChannels: [],
       });
       setTimeout(() => {
         setShowModal(false);
         setSuccess('');
+        fetchAnnouncements();
       }, 1500);
     } catch (error) {
       setFormError(error.response?.data?.error || 'Failed to create announcement');
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this announcement? Associated notifications will also be removed.')) {
+      setDeleting(id);
+      const result = await deleteAnnouncement(id);
+      setDeleting(null);
+      if (result.success) {
+        setSuccess('Announcement deleted successfully!');
+        setTimeout(() => setSuccess(''), 2000);
+      } else {
+        setFormError(result.error || 'Failed to delete announcement');
+      }
+    }
+  };
+
+  const getTargetDisplay = (announcement) => {
+    if (announcement.targetType === 'global') {
+      return 'All Students';
+    }
+    if (announcement.batchIds && announcement.batchIds.length > 0) {
+      return announcement.batchIds.map(b => b.name).join(', ');
+    }
+    return 'N/A';
+  };
+
+  const getChannelsDisplay = (channels) => {
+    return channels.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(', ');
   };
 
   return (
@@ -69,11 +120,68 @@ const Announcements = () => {
 
       <Card>
         <p className="text-gray-600">
-          Create announcements to communicate with students. You can create global announcements
-          or course-specific announcements.
+          Create announcements to communicate with students. You can target all students globally or select specific batches. 
+          Choose delivery channels: Portal (In-LMS), Email, or WhatsApp.
         </p>
       </Card>
 
+      {/* Announcements List */}
+      {loading && (
+        <div className="flex items-center justify-center h-64">
+          <LoadingSpinner size="lg" />
+        </div>
+      )}
+
+      {!loading && announcements.length === 0 && (
+        <Card>
+          <p className="text-center text-gray-500 py-8">No announcements yet.</p>
+        </Card>
+      )}
+
+      {!loading && announcements.length > 0 && (
+        <div className="space-y-4">
+          {announcements.map((announcement) => (
+            <Card key={announcement._id} className="hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{announcement.title}</h3>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{announcement.message}</p>
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-600">Target:</span>
+                      <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                        {getTargetDisplay(announcement)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-600">Channels:</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {getChannelsDisplay(announcement.deliveryChannels)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-600">Created:</span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(announcement.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="danger"
+                  onClick={() => handleDelete(announcement._id)}
+                  disabled={deleting === announcement._id}
+                  className="py-1 px-3 text-sm"
+                >
+                  {deleting === announcement._id ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create Announcement Modal */}
       <Modal
         isOpen={showModal}
         onClose={() => {
@@ -81,9 +189,9 @@ const Announcements = () => {
           setFormData({
             title: '',
             message: '',
-            target: 'global',
-            courseId: '',
-            pinned: false,
+            targetType: 'global',
+            batchIds: [],
+            deliveryChannels: [],
           });
           setFormError('');
           setSuccess('');
@@ -115,6 +223,7 @@ const Announcements = () => {
             name="title"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Enter announcement title"
             required
           />
           <Textarea
@@ -122,45 +231,74 @@ const Announcements = () => {
             name="message"
             value={formData.message}
             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+            placeholder="Enter announcement message"
             required
             rows={6}
           />
+
+          {/* Target Type Selection */}
           <Select
-            label="Target"
-            name="target"
-            value={formData.target}
-            onChange={(e) => setFormData({ ...formData, target: e.target.value, courseId: '' })}
+            label="Target Type"
+            name="targetType"
+            value={formData.targetType}
+            onChange={(e) => setFormData({ ...formData, targetType: e.target.value, batchIds: [] })}
             options={[
               { value: 'global', label: 'Global (All Students)' },
-              { value: 'course', label: 'Course Specific' },
+              { value: 'batch', label: 'Batch Specific' },
             ]}
             required
           />
-          {formData.target === 'course' && (
-            <Select
-              label="Course"
-              name="courseId"
-              value={formData.courseId}
-              onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-              options={courses.map((course) => ({
-                value: course._id,
-                label: course.title,
+
+          {/* Batch Selection (only for batch-specific) */}
+          {formData.targetType === 'batch' && (
+            <MultiSelect
+              label="Select Batches"
+              name="batchIds"
+              value={formData.batchIds}
+              onChange={(value) => setFormData({ ...formData, batchIds: value })}
+              options={batches.map((batch) => ({
+                value: batch._id,
+                label: batch.name,
               }))}
               required
             />
           )}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="pinned"
-              name="pinned"
-              checked={formData.pinned}
-              onChange={(e) => setFormData({ ...formData, pinned: e.target.checked })}
-              className="h-4 w-4 text-primary-400 focus:ring-primary-400 border-gray-300 rounded"
-            />
-            <label htmlFor="pinned" className="ml-2 block text-sm text-gray-900">
-              Pin this announcement
-            </label>
+
+          {/* Delivery Channels */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-900 mb-3">Delivery Channels</label>
+            <div className="space-y-2">
+              {['portal', 'email', 'whatsapp'].map((channel) => (
+                <div key={channel} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id={`channel-${channel}`}
+                    name={`channel-${channel}`}
+                    checked={formData.deliveryChannels.includes(channel)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({
+                          ...formData,
+                          deliveryChannels: [...formData.deliveryChannels, channel],
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          deliveryChannels: formData.deliveryChannels.filter(c => c !== channel),
+                        });
+                      }
+                    }}
+                    className="h-4 w-4 text-primary-400 focus:ring-primary-400 border-gray-300 rounded"
+                  />
+                  <label htmlFor={`channel-${channel}`} className="ml-2 block text-sm text-gray-900">
+                    {channel.charAt(0).toUpperCase() + channel.slice(1)}
+                    {channel === 'portal' && ' (In-LMS Portal)'}
+                    {channel === 'email' && ' (Email delivery)'}
+                    {channel === 'whatsapp' && ' (WhatsApp messages)'}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
         </form>
       </Modal>
