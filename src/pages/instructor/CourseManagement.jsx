@@ -251,6 +251,8 @@ const CourseManagement = () => {
     : showLessonModal
     ? 'Add Lesson'
     : 'Add Module';
+  const instructorRole = course?.instructorRole || 'viewer';
+  const canEdit = instructorRole === 'editor';
 
   const handleModalClose = () => {
     if (showModuleModal) {
@@ -294,23 +296,32 @@ const CourseManagement = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{course.title}</h1>
             <p className="text-gray-600 mt-1">{course.description}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Access: {instructorRole === 'editor' ? 'Editor' : 'Viewer'}
+            </p>
           </div>
           <div className="flex gap-2">
-            <select
-              className="input-field"
-              value={course.visibility}
-              onChange={(e) => handleUpdateCourse('visibility', e.target.value)}
-            >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-            </select>
+            {canEdit ? (
+              <select
+                className="input-field"
+                value={course.visibility}
+                onChange={(e) => handleUpdateCourse('visibility', e.target.value)}
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </select>
+            ) : (
+              <Badge variant={course.visibility === 'published' ? 'success' : 'warning'}>
+                {course.visibility}
+              </Badge>
+            )}
           </div>
         </div>
       </Card>
 
       <Card
         title="Modules & Lessons"
-        action={
+        action={canEdit ? (
           <Button onClick={() => {
             setShowModuleModal(true);
             setIsEditingModule(false);
@@ -319,7 +330,7 @@ const CourseManagement = () => {
           }}>
             Add Module
           </Button>
-        }
+        ) : null}
       >
         {course.modules && course.modules.length > 0 ? (
           <div className="space-y-4">
@@ -336,35 +347,37 @@ const CourseManagement = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="text-xs py-1 px-2"
-                      onClick={() => handleOpenEditModule(module)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="text-xs py-1 px-2"
-                      onClick={() => {
-                        setSelectedModule(module);
-                        setShowLessonModal(true);
-                        setIsEditingLesson(false);
-                        setEditingLessonId(null);
-                        setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0, order: 1 });
-                      }}
-                    >
-                      Add Lesson
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="text-xs py-1 px-2"
-                      onClick={() => handleDeleteModule(module._id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+                  {canEdit && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="text-xs py-1 px-2"
+                        onClick={() => handleOpenEditModule(module)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="text-xs py-1 px-2"
+                        onClick={() => {
+                          setSelectedModule(module);
+                          setShowLessonModal(true);
+                          setIsEditingLesson(false);
+                          setEditingLessonId(null);
+                          setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0, order: 1 });
+                        }}
+                      >
+                        Add Lesson
+                      </Button>
+                      <Button
+                        variant="danger"
+                        className="text-xs py-1 px-2"
+                        onClick={() => handleDeleteModule(module._id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 {module.lessons && module.lessons.length > 0 ? (
                   <div className="space-y-2 ml-4">
@@ -388,20 +401,36 @@ const CourseManagement = () => {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            className="text-xs py-1 px-2"
-                            onClick={() => handleOpenEditLesson(module, lesson)}
+                          <a
+                            href={lesson.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
                           >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="danger"
-                            className="text-xs py-1 px-2"
-                            onClick={() => handleDeleteLesson(module._id, lesson._id)}
-                          >
-                            Delete
-                          </Button>
+                            <Button
+                              variant="outline"
+                              className="text-xs py-1 px-2"
+                            >
+                              Open
+                            </Button>
+                          </a>
+                          {canEdit && (
+                            <>
+                            <Button
+                              variant="outline"
+                              className="text-xs py-1 px-2"
+                              onClick={() => handleOpenEditLesson(module, lesson)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              className="text-xs py-1 px-2"
+                              onClick={() => handleDeleteLesson(module._id, lesson._id)}
+                            >
+                              Delete
+                            </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}

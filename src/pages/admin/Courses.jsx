@@ -11,10 +11,10 @@ import Select from '../../components/Select';
 import Textarea from '../../components/Textarea';
 import MultiSelect from '../../components/MultiSelect';
 import { adminAPI } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+
+const DEFAULT_ROLE = 'viewer';
 
 const Courses = () => {
-  const { user } = useAuth();
   const { courses, loading, error, refetch } = useAdminCourses();
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
@@ -28,10 +28,21 @@ const Courses = () => {
     term: 'both',
     level: 'Beginner',
     thumbnailUrl: '',
-    instructorId: '',
+    courseInstructors: [],
     batches: [],
   });
+  const [instructorSearch, setInstructorSearch] = useState('');
   const [formError, setFormError] = useState('');
+
+  const selectedInstructorIds = formData.courseInstructors.map((entry) => entry.instructorId);
+  const filteredInstructors = instructors.filter((instructor) => {
+    const term = instructorSearch.trim().toLowerCase();
+    if (!term) return true;
+    return (
+      instructor.name.toLowerCase().includes(term)
+      || instructor.email.toLowerCase().includes(term)
+    );
+  });
 
   useEffect(() => {
     fetchInstructors();
@@ -69,13 +80,25 @@ const Courses = () => {
   const handleOpenModal = (course = null) => {
     if (course) {
       setEditingCourse(course);
+      const mappedInstructors = (course.courseInstructors || [])
+        .map((entry) => ({
+          instructorId: entry.instructorId?._id || entry.instructorId,
+          role: entry.role || DEFAULT_ROLE,
+        }))
+        .filter((entry) => entry.instructorId);
+
+      const fallbackInstructor = course.instructorId?._id || course.instructorId;
+      const normalizedCourseInstructors = mappedInstructors.length > 0
+        ? mappedInstructors
+        : (fallbackInstructor ? [{ instructorId: fallbackInstructor, role: 'editor' }] : []);
+
       setFormData({
         title: course.title,
         description: course.description,
         term: course.term,
         level: course.level,
         thumbnailUrl: course.thumbnailUrl || '',
-        instructorId: course.instructorId?._id || course.instructorId || '',
+        courseInstructors: normalizedCourseInstructors,
         batches: (course.batches || []).map((batch) => batch._id || batch),
       });
     } else {
@@ -86,10 +109,11 @@ const Courses = () => {
         term: 'both',
         level: 'Beginner',
         thumbnailUrl: '',
-        instructorId: '',
+        courseInstructors: [],
         batches: [],
       });
     }
+    setInstructorSearch('');
     setShowModal(true);
     setFormError('');
   };
@@ -100,6 +124,11 @@ const Courses = () => {
 
     if (!formData.batches || formData.batches.length === 0) {
       setFormError('Please select at least one batch');
+      return;
+    }
+
+    if (!formData.courseInstructors || formData.courseInstructors.length === 0) {
+      setFormError('Please assign at least one instructor');
       return;
     }
 
@@ -133,9 +162,17 @@ const Courses = () => {
       accessor: 'title',
     },
     {
-      header: 'Instructor',
-      accessor: 'instructorId',
-      render: (course) => course.instructorId?.name || 'N/A',
+      header: 'Instructors',
+      accessor: 'courseInstructors',
+      render: (course) => {
+        const assigned = (course.courseInstructors || []).map((entry) => {
+          const name = entry.instructorId?.name || 'Unknown';
+          return `${name} (${entry.role})`;
+        });
+
+        if (assigned.length > 0) return assigned.join(', ');
+        return course.instructorId?.name || 'N/A';
+      },
     },
     {
       header: 'Term',
@@ -298,21 +335,105 @@ const Courses = () => {
             onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
             placeholder="https://example.com/image.jpg"
           />
-          <Select
-            label="Instructor"
-            name="instructorId"
-            value={formData.instructorId}
-            onChange={(e) => setFormData({ ...formData, instructorId: e.target.value })}
-            options={[
-              { value: '', label: 'Select an instructor...' },
-              ...instructors.map(instructor => ({
-                value: instructor._id,
-                label: `${instructor.name} (${instructor.email})`
-              }))
-            ]}
-            required
-            disabled={loadingInstructors}
-          />
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Instructors <span className="text-red-500">*</span>
+            </label>
+
+            <div className="border rounded-lg p-3 bg-white">
+              <input
+                type="text"
+                className="input-field mb-3"
+                placeholder="Search instructors..."
+                value={instructorSearch}
+                onChange={(e) => setInstructorSearch(e.target.value)}
+                disabled={loadingInstructors}
+              />
+
+              <div className="max-h-40 overflow-y-auto border rounded-lg mb-3">
+                {filteredInstructors.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">No instructors found</div>
+                ) : (
+                  filteredInstructors.map((instructor) => {
+                    const isSelected = selectedInstructorIds.includes(instructor._id);
+
+                    return (
+                      <label
+                        key={instructor._id}
+                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            if (isSelected) {
+                              setFormData({
+                                ...formData,
+                                courseInstructors: formData.courseInstructors.filter(
+                                  (entry) => entry.instructorId !== instructor._id,
+                                ),
+                              });
+                              return;
+                            }
+
+                            setFormData({
+                              ...formData,
+                              courseInstructors: [
+                                ...formData.courseInstructors,
+                                { instructorId: instructor._id, role: DEFAULT_ROLE },
+                              ],
+                            });
+                          }}
+                          disabled={loadingInstructors}
+                        />
+                        <span>{instructor.name} ({instructor.email})</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+
+              {formData.courseInstructors.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    Assigned Instructor Roles
+                  </div>
+                  {formData.courseInstructors.map((entry) => {
+                    const instructor = instructors.find((item) => item._id === entry.instructorId);
+                    if (!instructor) return null;
+
+                    return (
+                      <div key={entry.instructorId} className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                        <Input
+                          label="Instructor"
+                          value={instructor.name}
+                          disabled
+                        />
+                        <Select
+                          label="Role"
+                          value={entry.role}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              courseInstructors: formData.courseInstructors.map((item) => (
+                                item.instructorId === entry.instructorId
+                                  ? { ...item, role: e.target.value }
+                                  : item
+                              )),
+                            });
+                          }}
+                          options={[
+                            { value: 'editor', label: 'Editor' },
+                            { value: 'viewer', label: 'Viewer' },
+                          ]}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </form>
       </Modal>
     </div>

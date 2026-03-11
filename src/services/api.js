@@ -87,7 +87,6 @@ export const adminAPI = {
   getAnnouncements: (params) => api.get('/admin/announcements', { params }),
   createAnnouncement: (data) => api.post('/admin/announcements', data),
   deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
-    createInstructor: (data) => api.post('/admin/instructors', data),
   getInstructors: () => api.get('/admin/instructors'),
 };
 
