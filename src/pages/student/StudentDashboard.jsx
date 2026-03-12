@@ -162,12 +162,6 @@ const StudentDashboard = () => {
                         >
                           {course.completed ? 'Completed' : `${Math.round(course.progress || 0)}% Complete`}
                         </span>
-                        <Badge variant="info" className="cursor-help" title="Course eligibility based on your term">
-                          Term: {course.term}
-                        </Badge>
-                        <Badge variant="primary" className="cursor-help" title="Only students in these batches can access this course">
-                          Batch: {batchLabel}
-                        </Badge>
                         <span className="text-xs text-gray-500">{course.level}</span>
                       </div>
                     </div>

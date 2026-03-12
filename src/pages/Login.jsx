@@ -59,6 +59,8 @@ const Login = () => {
       const errorMsg = result.error || '';
       if (errorMsg.includes('pending admin approval')) {
         setAuthStatus('PENDING_APPROVAL');
+      } else if (errorMsg.includes('batch is currently inactive')) {
+        setAuthStatus('BATCH_INACTIVE');
       } else if (errorMsg.includes('blocked')) {
         setAuthStatus('BLOCKED');
       } else if (errorMsg.includes('rejected')) {
