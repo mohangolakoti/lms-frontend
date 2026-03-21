@@ -21,6 +21,7 @@ const AdminLayout = ({ children }) => {
     { path: '/admin/courses', label: 'Courses', icon: '📚' },
     { path: '/admin/instructors', label: 'Instructors', icon: '👨‍🏫' },
     { path: '/admin/announcements', label: 'Announcements', icon: '📢' },
+    { path: '/admin/certificates', label: 'Certificates', icon: '🎓' },
   ];
 
   return (

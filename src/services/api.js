@@ -64,6 +64,9 @@ export const studentAPI = {
   getNotifications: (params) => api.get('/students/notifications', { params }),
   markNotificationRead: (notificationId) => 
     api.put(`/students/notifications/${notificationId}/read`),
+  getMyCertificates: () => api.get('/certificates/my'),
+  downloadCertificate: (certificateNumber) =>
+    api.get(`/certificates/download/${certificateNumber}`, { responseType: 'blob' }),
 };
 
 // Admin API
@@ -88,6 +91,14 @@ export const adminAPI = {
   createAnnouncement: (data) => api.post('/admin/announcements', data),
   deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
   getInstructors: () => api.get('/admin/instructors'),
+  getCertificateTemplates: () => api.get('/certificates/templates'),
+  createCertificateTemplate: (formData) =>
+    api.post('/certificates/templates', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  previewCertificate: (data) => api.post('/certificates/preview', data),
+  generateCertificates: (data) => api.post('/certificates/generate', data),
+  getCertificates: (params) => api.get('/certificates/admin', { params }),
 };
 
 // Instructor API

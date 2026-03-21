@@ -13,6 +13,8 @@ const StudentDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [assignedCourses, setAssignedCourses] = useState([]);
+  const [certificates, setCertificates] = useState([]);
+  const [certificatesLoading, setCertificatesLoading] = useState(false);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,6 +23,7 @@ const StudentDashboard = () => {
     fetchDashboard();
     fetchAnnouncements();
     fetchAssignedCourses();
+    fetchCertificates();
   }, []);
 
   const fetchDashboard = async () => {
@@ -61,6 +64,20 @@ const StudentDashboard = () => {
       console.error('Assigned courses error:', error);
     } finally {
       setCoursesLoading(false);
+    }
+  };
+
+  const fetchCertificates = async () => {
+    try {
+      setCertificatesLoading(true);
+      const response = await studentAPI.getMyCertificates();
+      if (response.data.success) {
+        setCertificates(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Certificates error:', error);
+    } finally {
+      setCertificatesLoading(false);
     }
   };
 
@@ -172,6 +189,35 @@ const StudentDashboard = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+      </Card>
+
+      <Card title="My Certificates" action={<Link to="/student/certificates"><Button variant="outline">View All</Button></Link>}>
+        {certificatesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <LoadingSpinner size="md" />
+          </div>
+        ) : certificates.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>No certificates available yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {certificates.slice(0, 3).map((certificate) => (
+              <div
+                key={certificate._id}
+                className="p-4 border border-gray-200 rounded-lg flex items-center justify-between"
+              >
+                <div>
+                  <p className="font-medium text-gray-900">{certificate.certificateName || 'Certificate'}</p>
+                  <p className="text-sm text-gray-600">
+                    {certificate.certificateNumber} • Issued on {new Date(certificate.issuedAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <Badge variant="success">Issued</Badge>
+              </div>
+            ))}
           </div>
         )}
       </Card>

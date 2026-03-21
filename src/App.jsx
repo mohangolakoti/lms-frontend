@@ -23,6 +23,7 @@ import CourseAnalytics from './pages/admin/CourseAnalytics';
 import Instructors from './pages/admin/Instructors';
 import AdminAnnouncements from './pages/admin/Announcements';
 import Batches from './pages/admin/Batches';
+import AdminCertificates from './pages/admin/Certificates';
 
 // Instructor Pages
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
@@ -41,6 +42,7 @@ import StudentAssessments from './pages/student/Assessments';
 import AssessmentView from './pages/student/AssessmentView';
 import StudentAnnouncements from './pages/student/Announcements';
 import Notifications from './pages/student/Notifications';
+import StudentCertificates from './pages/student/Certificates';
 
 // Redirect component for authenticated users
 const HomeRedirect = () => {
@@ -93,6 +95,7 @@ function App() {
                     <Route path="courses/:id/analytics" element={<CourseAnalytics />} />
                     <Route path="instructors" element={<Instructors />} />
                     <Route path="announcements" element={<AdminAnnouncements />} />
+                    <Route path="certificates" element={<AdminCertificates />} />
                     <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>
                 </AdminLayout>
@@ -135,6 +138,7 @@ function App() {
                     <Route path="assessments/:id" element={<AssessmentView />} />
                     <Route path="announcements" element={<StudentAnnouncements />} />
                     <Route path="notifications" element={<Notifications />} />
+                    <Route path="certificates" element={<StudentCertificates />} />
                     <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
                   </Routes>
                 </StudentLayout>
