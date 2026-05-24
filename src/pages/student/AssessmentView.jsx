@@ -40,18 +40,14 @@ const AssessmentView = () => {
   const fetchAssessment = async () => {
     try {
       setLoading(true);
-      const response = await studentAPI.getAssessments();
+      const response = await studentAPI.getAssessmentById(id);
       if (response.data.success) {
-        const found = response.data.data.find(a => a._id === id);
-        if (found) {
-          setAssessment(found);
-          if (found.submitted && found.submission) {
-            setSubmission(found.submission);
-          } else {
-            setTimeRemaining(found.duration * 60); // Convert to seconds
-          }
+        const found = response.data.data;
+        setAssessment(found);
+        if (found.submitted && found.submission) {
+          setSubmission(found.submission);
         } else {
-          setError('Assessment not found');
+          setTimeRemaining(found.duration * 60); // Convert to seconds
         }
       }
     } catch (error) {
@@ -276,12 +272,6 @@ const AssessmentView = () => {
                       <p className="text-sm text-gray-600">Your Answer:</p>
                       <p className="text-gray-900">{answer?.answer || 'Not answered'}</p>
                     </div>
-                    {!answer?.isCorrect && (
-                      <div>
-                        <p className="text-sm text-gray-600">Correct Answer:</p>
-                        <p className="text-green-600 font-medium">{question.correctAnswer}</p>
-                      </div>
-                    )}
                     {answer && (
                       <p className="text-sm text-gray-500">
                         Marks: {answer.marksObtained} / {question.marks}

@@ -13,6 +13,8 @@ const AssessmentSubmissions = () => {
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [feedbackDrafts, setFeedbackDrafts] = useState({});
+  const [savingFeedback, setSavingFeedback] = useState({});
 
   useEffect(() => {
     fetchSubmissions();
@@ -30,6 +32,11 @@ const AssessmentSubmissions = () => {
         const { assessment, submissions } = response.data.data;
         setAssessment(assessment);
         setSubmissions(submissions);
+        const initialDrafts = {};
+        submissions.forEach((submission) => {
+          initialDrafts[submission._id] = submission.feedback || '';
+        });
+        setFeedbackDrafts(initialDrafts);
       }
     } catch (error) {
       console.error('Error fetching submissions:', error);
@@ -54,6 +61,20 @@ const AssessmentSubmissions = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}m ${secs}s`;
+  };
+
+  const handleSaveFeedback = async (submissionId) => {
+    try {
+      setSavingFeedback((prev) => ({ ...prev, [submissionId]: true }));
+      await instructorAPI.gradeSubmission(submissionId, {
+        feedback: feedbackDrafts[submissionId] || '',
+      });
+      await fetchSubmissions();
+    } catch (saveError) {
+      setError(saveError.response?.data?.error || 'Failed to save feedback');
+    } finally {
+      setSavingFeedback((prev) => ({ ...prev, [submissionId]: false }));
+    }
   };
 
   if (loading) {
@@ -173,13 +194,25 @@ const AssessmentSubmissions = () => {
                       </div>
                     </div>
 
-                    {submission.feedback && (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Feedback:</span> {submission.feedback}
-                        </p>
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Instructor Feedback</p>
+                      <textarea
+                        className="input-field w-full"
+                        rows={3}
+                        value={feedbackDrafts[submission._id] || ''}
+                        onChange={(e) => setFeedbackDrafts((prev) => ({ ...prev, [submission._id]: e.target.value }))}
+                        placeholder="Add grading feedback..."
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleSaveFeedback(submission._id)}
+                          disabled={!!savingFeedback[submission._id]}
+                        >
+                          {savingFeedback[submission._id] ? 'Saving...' : 'Save Feedback'}
+                        </Button>
                       </div>
-                    )}
+                    </div>
 
                     {submission.gradedBy && (
                       <div className="mt-2 text-xs text-gray-500">

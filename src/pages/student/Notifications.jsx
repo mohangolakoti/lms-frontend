@@ -44,10 +44,7 @@ const Notifications = () => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.read);
-      await Promise.all(
-        unreadNotifications.map(n => studentAPI.markNotificationRead(n._id))
-      );
+      await studentAPI.markAllNotificationsRead();
       fetchNotifications();
     } catch (error) {
       alert('Failed to mark all notifications as read');

@@ -197,8 +197,33 @@ const Certificates = () => {
 
       const payload = buildGenerationPayload();
       const response = await adminAPI.generateCertificates(payload);
-      setGenerationResult(response?.data?.data || null);
-      showToast('Certificates generated successfully');
+      const jobId = response?.data?.data?.jobId;
+      if (!jobId) {
+        throw new Error('Invalid generation job response');
+      }
+
+      let attempts = 0;
+      let done = false;
+      while (!done && attempts < 120) {
+        attempts += 1;
+        const jobRes = await adminAPI.getCertificateJob(jobId);
+        const job = jobRes?.data?.data;
+        if (job?.status === 'completed') {
+          setGenerationResult(job.result || null);
+          done = true;
+          showToast('Certificates generated successfully');
+          break;
+        }
+        if (job?.status === 'failed') {
+          throw new Error(job.error || 'Certificate generation job failed');
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+
+      if (!done) {
+        throw new Error('Certificate generation is taking longer than expected. Please retry in a moment.');
+      }
 
       const certificateRes = await adminAPI.getCertificates();
       const issued = certificateRes?.data?.data || [];

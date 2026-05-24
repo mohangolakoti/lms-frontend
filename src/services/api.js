@@ -95,7 +95,11 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   refreshToken: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
   logout: () => api.post('/auth/logout'),
+  logoutAll: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
+  getSessions: () => api.get('/auth/sessions'),
+  revokeSession: (sessionId) => api.delete(`/auth/sessions/${sessionId}`),
+  revokeAllSessions: () => api.delete('/auth/sessions'),
   forgotPassword: (email) => api.post('/auth/forgotpassword', { email }),
   resetPassword: (token, password) => api.put(`/auth/resetpassword/${token}`, { password }),
   updatePassword: (currentPassword, newPassword) => 
@@ -110,12 +114,14 @@ export const studentAPI = {
   updateLessonProgress: (courseId, lessonId, data) => 
     api.put(`/students/courses/${courseId}/lessons/${lessonId}/progress`, data),
   getAssessments: () => api.get('/students/assessments'),
+  getAssessmentById: (assessmentId) => api.get(`/students/assessments/${assessmentId}`),
   submitAssessment: (assessmentId, data) => 
     api.post(`/students/assessments/${assessmentId}/submit`, data),
   getAnnouncements: () => api.get('/students/announcements'),
   getNotifications: (params) => api.get('/students/notifications', { params }),
   markNotificationRead: (notificationId) => 
     api.put(`/students/notifications/${notificationId}/read`),
+  markAllNotificationsRead: () => api.put('/students/notifications/read-all'),
   getMyCertificates: () => api.get('/certificates/my'),
   downloadCertificate: (certificateNumber) =>
     api.get(`/certificates/download/${certificateNumber}`, { responseType: 'blob' }),
@@ -151,6 +157,7 @@ export const adminAPI = {
     }),
   previewCertificate: (data) => api.post('/certificates/preview', data),
   generateCertificates: (data) => api.post('/certificates/generate', data),
+  getCertificateJob: (jobId) => api.get(`/certificates/jobs/${jobId}`),
   getCertificates: (params) => api.get('/certificates/admin', { params }),
 };
 

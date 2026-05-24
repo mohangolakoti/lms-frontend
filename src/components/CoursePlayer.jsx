@@ -91,83 +91,9 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
   }, [videoSource.type]);
 
   useEffect(() => {
-    // Disable right-click
-    const handleContextMenu = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-    
-    // Disable text selection
-    const handleSelectStart = (e) => {
-      e.preventDefault();
-      return false;
-    };
-    
-    // Disable drag
-    const handleDragStart = (e) => {
-      e.preventDefault();
-      return false;
-    };
-    
-    // Disable keyboard shortcuts
-    const handleKeyDown = (e) => {
-      // Disable Ctrl+S, Ctrl+P, Ctrl+U, Ctrl+I, Ctrl+C, Ctrl+A, Ctrl+V
-      if (e.ctrlKey || e.metaKey) {
-        if (['s', 'p', 'u', 'i', 'c', 'a', 'v'].includes(e.key.toLowerCase())) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
-        }
-      }
-      // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Print Screen
-      if (e.key === 'F12' || 
-          e.key === 'PrintScreen' ||
-          (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase()))) {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      }
-    };
-
-    // Disable copy
-    const handleCopy = (e) => {
-      e.preventDefault();
-      return false;
-    };
-
-    // Disable cut
-    const handleCut = (e) => {
-      e.preventDefault();
-      return false;
-    };
-
-    document.addEventListener('contextmenu', handleContextMenu, true);
-    document.addEventListener('selectstart', handleSelectStart, true);
-    document.addEventListener('dragstart', handleDragStart, true);
-    document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('copy', handleCopy, true);
-    document.addEventListener('cut', handleCut, true);
-
-    // Add CSS to prevent selection
-    document.body.style.userSelect = 'none';
-    document.body.style.webkitUserSelect = 'none';
-    document.body.style.mozUserSelect = 'none';
-    document.body.style.msUserSelect = 'none';
-
-    return () => {
-      document.removeEventListener('contextmenu', handleContextMenu, true);
-      document.removeEventListener('selectstart', handleSelectStart, true);
-      document.removeEventListener('dragstart', handleDragStart, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
-      document.removeEventListener('copy', handleCopy, true);
-      document.removeEventListener('cut', handleCut, true);
-      document.body.style.userSelect = '';
-      document.body.style.webkitUserSelect = '';
-      document.body.style.mozUserSelect = '';
-      document.body.style.msUserSelect = '';
-    };
-  }, []);
+    setLastWatchedSecond(lesson.lastWatchedSecond || 0);
+    setCompleted(lesson.completed || false);
+  }, [lesson._id, lesson.lastWatchedSecond, lesson.completed]);
 
   useEffect(() => {
     if (lesson.type === 'video' && videoSource.type === VIDEO_SOURCE_TYPES.DIRECT && videoRef.current) {
@@ -300,8 +226,18 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
               />
             )}
             {videoSource.type === VIDEO_SOURCE_TYPES.UNSUPPORTED && (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-600">
-                This video source is not supported.
+              <div className="absolute inset-0 flex flex-col gap-3 items-center justify-center text-sm text-gray-600">
+                <p>This video source is not supported in embedded mode.</p>
+                {lesson.url && (
+                  <a
+                    href={lesson.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary"
+                  >
+                    Open lesson in new tab
+                  </a>
+                )}
               </div>
             )}
           </div>
