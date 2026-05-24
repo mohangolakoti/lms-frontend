@@ -91,6 +91,7 @@ export const adminAPI = {
   createAnnouncement: (data) => api.post('/admin/announcements', data),
   deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
   getInstructors: () => api.get('/admin/instructors'),
+  createInstructor: (data) => api.post('/admin/instructors', data),
   getCertificateTemplates: () => api.get('/certificates/templates'),
   createCertificateTemplate: (formData) =>
     api.post('/certificates/templates', formData, {

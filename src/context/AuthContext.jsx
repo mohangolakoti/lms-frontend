@@ -70,12 +70,23 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.register(userData);
       if (response.data.success) {
-        const { token, refreshToken, user: newUser } = response.data.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('refreshToken', refreshToken);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        setUser(newUser);
-        setIsAuthenticated(true);
+        const { token, refreshToken, user: newUser } = response.data.data || {};
+
+        // Public registration is student-only and may intentionally return no token
+        // until admin approval. Treat that as a non-authenticated success state.
+        if (token && newUser) {
+          localStorage.setItem('token', token);
+          localStorage.setItem('refreshToken', refreshToken);
+          localStorage.setItem('user', JSON.stringify(newUser));
+          setUser(newUser);
+          setIsAuthenticated(true);
+        } else if (newUser) {
+          localStorage.setItem('user', JSON.stringify(newUser));
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          setUser(newUser);
+          setIsAuthenticated(false);
+        }
         return { success: true };
       }
     } catch (error) {

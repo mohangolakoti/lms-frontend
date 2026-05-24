@@ -155,36 +155,25 @@ const Register = () => {
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Role
+                Registration Type
+              </label>
+              <div className="input-field bg-gray-50 text-gray-700">Student</div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Batch
               </label>
               <select
-                name="role"
-                value={formData.role}
+                name="batch"
+                value={formData.batch}
                 onChange={handleChange}
                 className="input-field"
+                required
               >
-                <option value="student">Student</option>
-                <option value="instructor">Instructor</option>
-                <option value="admin">Admin</option>
+                <option value="longTerm">Long Term</option>
+                <option value="shortTerm">Short Term</option>
               </select>
             </div>
-            {formData.role === 'student' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Batch
-                </label>
-                <select
-                  name="batch"
-                  value={formData.batch}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                >
-                  <option value="longTerm">Long Term</option>
-                  <option value="shortTerm">Short Term</option>
-                </select>
-              </div>
-            )}
             <Input
               label="Password"
               type="password"
