@@ -10,6 +10,15 @@ const api = axios.create({
   },
 });
 
+const refreshClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+let refreshRequest = null;
+
 // Request interceptor to add token
 api.interceptors.request.use(
   (config) => {
@@ -27,13 +36,55 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+  async (error) => {
+    const originalRequest = error.config || {};
+    const status = error.response?.status;
+    const requestUrl = originalRequest.url || '';
+    const isAuthEndpoint = requestUrl.includes('/auth/login')
+      || requestUrl.includes('/auth/register')
+      || requestUrl.includes('/auth/refresh')
+      || requestUrl.includes('/auth/forgotpassword')
+      || requestUrl.includes('/auth/resetpassword');
+
+    if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        originalRequest._retry = true;
+
+        try {
+          if (!refreshRequest) {
+            refreshRequest = refreshClient.post('/auth/refresh', { refreshToken });
+          }
+
+          const refreshResponse = await refreshRequest;
+          const { token, refreshToken: rotatedRefreshToken, user } = refreshResponse.data.data || {};
+
+          if (token) {
+            localStorage.setItem('token', token);
+            if (rotatedRefreshToken) {
+              localStorage.setItem('refreshToken', rotatedRefreshToken);
+            }
+            if (user) {
+              localStorage.setItem('user', JSON.stringify(user));
+            }
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          // Fall through to logout behavior below
+        } finally {
+          refreshRequest = null;
+        }
+      }
+    }
+
+    if (status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
       window.location.href = '/login';
     }
+
     return Promise.reject(error);
   }
 );
@@ -42,6 +93,7 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (data) => api.post('/auth/register', data),
+  refreshToken: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
   forgotPassword: (email) => api.post('/auth/forgotpassword', { email }),
