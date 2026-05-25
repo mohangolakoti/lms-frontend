@@ -111,6 +111,10 @@ const Announcements = () => {
     return channels.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(', ');
   };
 
+  const getDeliveryStat = (announcement, channel, key) => {
+    return announcement?.deliveryStats?.[channel]?.[key] ?? 0;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -165,6 +169,16 @@ const Announcements = () => {
                         {new Date(announcement.createdAt).toLocaleDateString()}
                       </span>
                     </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                    {['portal', 'email', 'whatsapp'].map((channel) => (
+                      <div key={channel} className="bg-gray-50 border border-gray-200 rounded px-2 py-1">
+                        <span className="font-medium text-gray-700">{channel.toUpperCase()}</span>
+                        <span className="text-gray-600 ml-2">
+                          Sent: {getDeliveryStat(announcement, channel, 'sent')} • Failed: {getDeliveryStat(announcement, channel, 'failed')}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <Button

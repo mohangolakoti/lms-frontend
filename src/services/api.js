@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const isLocalFrontend = typeof window !== 'undefined'
+  && ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(window.location.hostname);
+
+// In local development, prefer Vite proxy to avoid CORS entirely.
+const API_BASE_URL = import.meta.env.DEV && isLocalFrontend
+  ? '/api'
+  : (configuredApiBaseUrl || 'http://localhost:3000/api');
 
 // Create axios instance
 const api = axios.create({
@@ -122,6 +129,9 @@ export const studentAPI = {
   markNotificationRead: (notificationId) => 
     api.put(`/students/notifications/${notificationId}/read`),
   markAllNotificationsRead: () => api.put('/students/notifications/read-all'),
+  getNotificationPreferences: () => api.get('/students/notifications/preferences'),
+  updateNotificationPreferences: (channels) =>
+    api.put('/students/notifications/preferences', { channels }),
   getMyCertificates: () => api.get('/certificates/my'),
   downloadCertificate: (certificateNumber) =>
     api.get(`/certificates/download/${certificateNumber}`, { responseType: 'blob' }),
@@ -130,6 +140,7 @@ export const studentAPI = {
 // Admin API
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
+  getOperationalReports: () => api.get('/admin/reports/operational'),
   getStudents: (params) => api.get('/admin/students', { params }),
   getStudent: (id) => api.get(`/admin/students/${id}`),
   updateStudentStatus: (id, status) => 
@@ -172,14 +183,19 @@ export const instructorAPI = {
     api.put(`/instructors/courses/${courseId}/modules/${moduleId}`, data),
   deleteModule: (courseId, moduleId) => 
     api.delete(`/instructors/courses/${courseId}/modules/${moduleId}`),
+  reorderModules: (courseId, moduleOrder) =>
+    api.put(`/instructors/courses/${courseId}/modules/reorder`, { moduleOrder }),
   addLesson: (courseId, moduleId, data) => 
     api.post(`/instructors/courses/${courseId}/modules/${moduleId}/lessons`, data),
   updateLesson: (courseId, moduleId, lessonId, data) => 
     api.put(`/instructors/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, data),
   deleteLesson: (courseId, moduleId, lessonId) => 
     api.delete(`/instructors/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`),
+  reorderLessons: (courseId, moduleId, lessonOrder) =>
+    api.put(`/instructors/courses/${courseId}/modules/${moduleId}/lessons/reorder`, { lessonOrder }),
   createAssessment: (data) => api.post('/instructors/assessments', data),
   getAssessments: () => api.get('/instructors/assessments'),
+  getAssessmentAnalytics: (assessmentId) => api.get(`/instructors/assessments/${assessmentId}/analytics`),
   getCourseProgress: (courseId) => api.get(`/instructors/courses/${courseId}/progress`),
   getSubmissions: (assessmentId) => api.get(`/instructors/assessments/${assessmentId}/submissions`),
   gradeSubmission: (submissionId, data) => 

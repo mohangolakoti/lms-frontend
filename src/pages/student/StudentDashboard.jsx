@@ -14,6 +14,7 @@ const StudentDashboard = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [assignedCourses, setAssignedCourses] = useState([]);
   const [certificates, setCertificates] = useState([]);
+  const [recommendedLesson, setRecommendedLesson] = useState(null);
   const [certificatesLoading, setCertificatesLoading] = useState(false);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -59,11 +60,51 @@ const StudentDashboard = () => {
         const payload = response?.data?.data;
         const items = Array.isArray(payload) ? payload : (payload?.data || []);
         setAssignedCourses(items);
+        await buildRecommendedLesson(items);
       }
     } catch (error) {
       console.error('Assigned courses error:', error);
     } finally {
       setCoursesLoading(false);
+    }
+  };
+
+  const buildRecommendedLesson = async (courses) => {
+    try {
+      const rankedCourses = (courses || [])
+        .filter((course) => !course.completed)
+        .sort((a, b) => (a.progress || 0) - (b.progress || 0))
+        .slice(0, 3);
+
+      for (const course of rankedCourses) {
+        const courseId = course._id || course.courseId;
+        if (!courseId) continue;
+        const detailsResponse = await studentAPI.getCourseDetails(courseId);
+        const detailCourse = detailsResponse?.data?.data?.course;
+        if (!detailCourse?.modules?.length) continue;
+
+        const orderedModules = [...detailCourse.modules].sort((a, b) => a.order - b.order);
+        for (const module of orderedModules) {
+          const orderedLessons = [...(module.lessons || [])].sort((a, b) => a.order - b.order);
+          const nextLesson = orderedLessons.find((lesson) => !lesson.completed);
+          if (nextLesson) {
+            setRecommendedLesson({
+              courseId,
+              courseTitle: detailCourse.title,
+              moduleTitle: module.title,
+              lessonId: nextLesson._id,
+              lessonTitle: nextLesson.title,
+              progress: course.progress || 0,
+            });
+            return;
+          }
+        }
+      }
+
+      setRecommendedLesson(null);
+    } catch (recommendationError) {
+      console.error('Recommendation error:', recommendationError);
+      setRecommendedLesson(null);
     }
   };
 
@@ -190,6 +231,27 @@ const StudentDashboard = () => {
               );
             })}
           </div>
+        )}
+      </Card>
+
+      <Card title="Recommended Next Lesson">
+        {recommendedLesson ? (
+          <div className="flex items-center justify-between p-4 border border-primary-200 bg-primary-50 rounded-lg">
+            <div>
+              <p className="font-semibold text-gray-900">{recommendedLesson.lessonTitle}</p>
+              <p className="text-sm text-gray-600">
+                {recommendedLesson.courseTitle} • {recommendedLesson.moduleTitle}
+              </p>
+              <p className="text-xs text-primary-700 mt-1">
+                Current course progress: {Math.round(recommendedLesson.progress)}%
+              </p>
+            </div>
+            <Link to={`/student/courses/${recommendedLesson.courseId}/lessons/${recommendedLesson.lessonId}`}>
+              <Button>Resume Now</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-500">No recommendation available yet. Start a course to get suggestions.</div>
         )}
       </Card>
 

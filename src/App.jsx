@@ -31,6 +31,7 @@ import InstructorCourses from './pages/instructor/Courses';
 import CourseManagement from './pages/instructor/CourseManagement';
 import InstructorAssessments from './pages/instructor/Assessments';
 import AssessmentSubmissions from './pages/instructor/AssessmentSubmissions';
+import AssessmentAnalytics from './pages/instructor/AssessmentAnalytics';
 import StudentProgress from './pages/instructor/StudentProgress';
 
 // Student Pages
@@ -43,6 +44,7 @@ import AssessmentView from './pages/student/AssessmentView';
 import StudentAnnouncements from './pages/student/Announcements';
 import Notifications from './pages/student/Notifications';
 import StudentCertificates from './pages/student/Certificates';
+import StudentSessions from './pages/student/Sessions';
 
 // Redirect component for authenticated users
 const HomeRedirect = () => {
@@ -115,6 +117,7 @@ function App() {
                     <Route path="courses/:id" element={<CourseManagement />} />
                     <Route path="assessments" element={<InstructorAssessments />} />
                     <Route path="assessments/:assessmentId/submissions" element={<AssessmentSubmissions />} />
+                    <Route path="assessments/:assessmentId/analytics" element={<AssessmentAnalytics />} />
                     <Route path="progress" element={<StudentProgress />} />
                     <Route path="*" element={<Navigate to="/instructor/dashboard" replace />} />
                   </Routes>
@@ -138,6 +141,7 @@ function App() {
                     <Route path="assessments/:id" element={<AssessmentView />} />
                     <Route path="announcements" element={<StudentAnnouncements />} />
                     <Route path="notifications" element={<Notifications />} />
+                    <Route path="sessions" element={<StudentSessions />} />
                     <Route path="certificates" element={<StudentCertificates />} />
                     <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
                   </Routes>

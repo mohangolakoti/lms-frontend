@@ -223,6 +223,37 @@ const CourseManagement = () => {
     }
   };
 
+  const reorderModules = async (fromIndex, toIndex) => {
+    if (!course?.modules || toIndex < 0 || toIndex >= course.modules.length) return;
+    const ordered = [...course.modules].sort((a, b) => a.order - b.order);
+    const [moved] = ordered.splice(fromIndex, 1);
+    ordered.splice(toIndex, 0, moved);
+    const moduleOrder = ordered.map((module) => module._id);
+    try {
+      await instructorAPI.reorderModules(id, moduleOrder);
+      setSuccessMessage('Modules reordered successfully');
+      fetchCourse();
+    } catch (reorderError) {
+      setErrorMessage(reorderError.response?.data?.error || 'Failed to reorder modules');
+    }
+  };
+
+  const reorderLessons = async (moduleId, fromIndex, toIndex) => {
+    const module = (course?.modules || []).find((item) => item._id === moduleId);
+    if (!module || !module.lessons || toIndex < 0 || toIndex >= module.lessons.length) return;
+    const ordered = [...module.lessons].sort((a, b) => a.order - b.order);
+    const [moved] = ordered.splice(fromIndex, 1);
+    ordered.splice(toIndex, 0, moved);
+    const lessonOrder = ordered.map((lesson) => lesson._id);
+    try {
+      await instructorAPI.reorderLessons(id, moduleId, lessonOrder);
+      setSuccessMessage('Lessons reordered successfully');
+      fetchCourse();
+    } catch (reorderError) {
+      setErrorMessage(reorderError.response?.data?.error || 'Failed to reorder lessons');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -334,7 +365,7 @@ const CourseManagement = () => {
       >
         {course.modules && course.modules.length > 0 ? (
           <div className="space-y-4">
-            {course.modules.map((module) => (
+            {course.modules.map((module, moduleIndex) => (
               <div key={module._id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -355,6 +386,22 @@ const CourseManagement = () => {
                         onClick={() => handleOpenEditModule(module)}
                       >
                         Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="text-xs py-1 px-2"
+                        onClick={() => reorderModules(moduleIndex, moduleIndex - 1)}
+                        disabled={moduleIndex === 0}
+                      >
+                        Up
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="text-xs py-1 px-2"
+                        onClick={() => reorderModules(moduleIndex, moduleIndex + 1)}
+                        disabled={moduleIndex === (course.modules.length - 1)}
+                      >
+                        Down
                       </Button>
                       <Button
                         variant="outline"
@@ -381,7 +428,7 @@ const CourseManagement = () => {
                 </div>
                 {module.lessons && module.lessons.length > 0 ? (
                   <div className="space-y-2 ml-4">
-                    {module.lessons.map((lesson) => (
+                    {module.lessons.map((lesson, lessonIndex) => (
                       <div
                         key={lesson._id}
                         className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition"
@@ -421,6 +468,22 @@ const CourseManagement = () => {
                               onClick={() => handleOpenEditLesson(module, lesson)}
                             >
                               Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="text-xs py-1 px-2"
+                              onClick={() => reorderLessons(module._id, lessonIndex, lessonIndex - 1)}
+                              disabled={lessonIndex === 0}
+                            >
+                              Up
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="text-xs py-1 px-2"
+                              onClick={() => reorderLessons(module._id, lessonIndex, lessonIndex + 1)}
+                              disabled={lessonIndex === (module.lessons.length - 1)}
+                            >
+                              Down
                             </Button>
                             <Button
                               variant="danger"

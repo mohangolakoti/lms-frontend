@@ -16,8 +16,10 @@ const Students = () => {
     batchId: '',
     search: '',
     approvalStatus: 'pending',
+    page: 1,
+    limit: 20,
   });
-  const { students, loading, error, refetch } = useStudents(filters);
+  const { students, pagination, loading, error, refetch } = useStudents(filters);
   const [batches, setBatches] = useState([]);
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -50,6 +52,10 @@ const Students = () => {
   useEffect(() => {
     fetchBatches();
   }, []);
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, page: 1 }));
+  }, [filters.status, filters.batch, filters.batchId, filters.search, filters.approvalStatus]);
 
   const handleStatusChange = async (studentId, newStatus) => {
     try {
@@ -373,7 +379,15 @@ const Students = () => {
           </select>
           <Button
             variant="secondary"
-            onClick={() => setFilters({ status: '', batch: '', batchId: '', search: '', approvalStatus: 'pending' })}
+            onClick={() => setFilters({
+              status: '',
+              batch: '',
+              batchId: '',
+              search: '',
+              approvalStatus: 'pending',
+              page: 1,
+              limit: filters.limit,
+            })}
           >
             Clear Filters
           </Button>
@@ -391,6 +405,31 @@ const Students = () => {
           loading={loading}
           emptyMessage="No students found"
         />
+
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <p className="text-gray-600">
+            Showing page {pagination?.page || 1} of {pagination?.pages || 1}
+            {' '}({pagination?.total || 0} students)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!pagination?.hasPrevPage}
+              onClick={() => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!pagination?.hasNextPage}
+              onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </Card>
 
       <Modal

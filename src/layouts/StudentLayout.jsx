@@ -30,6 +30,7 @@ const StudentLayout = ({ children }) => {
     { path: '/student/assessments', label: 'Assessments', icon: '📝' },
     { path: '/student/announcements', label: 'Announcements', icon: '📢' },
     { path: '/student/notifications', label: 'Notifications', icon: '🔔' },
+    { path: '/student/sessions', label: 'Active Devices', icon: '🖥️' },
     { path: '/student/certificates', label: 'Certificates', icon: '🎓' },
   ];
 

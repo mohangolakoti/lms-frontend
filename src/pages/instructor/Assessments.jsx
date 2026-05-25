@@ -136,9 +136,14 @@ const Assessments = () => {
                     </div>
                   </div>
                 </div>
-                <Link to={`/instructor/assessments/${assessment._id}/submissions`}>
-                  <Button variant="outline">View Submissions →</Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link to={`/instructor/assessments/${assessment._id}/submissions`}>
+                    <Button variant="outline">View Submissions →</Button>
+                  </Link>
+                  <Link to={`/instructor/assessments/${assessment._id}/analytics`}>
+                    <Button variant="secondary">View Analytics</Button>
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

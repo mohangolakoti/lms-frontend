@@ -7,12 +7,18 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
+  const [preferences, setPreferences] = useState({
+    portal: true,
+    email: true,
+    whatsapp: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all'); // all, read, unread
 
   useEffect(() => {
     fetchNotifications();
+    fetchPreferences();
   }, [filter]);
 
   const fetchNotifications = async () => {
@@ -33,6 +39,18 @@ const Notifications = () => {
     }
   };
 
+  const fetchPreferences = async () => {
+    try {
+      const response = await studentAPI.getNotificationPreferences();
+      if (response.data.success) {
+        setPreferences(response.data.data?.channels || preferences);
+      }
+    } catch (prefError) {
+      // Non-blocking for notifications view.
+      console.error('Failed to fetch notification preferences', prefError);
+    }
+  };
+
   const handleMarkAsRead = async (notificationId) => {
     try {
       await studentAPI.markNotificationRead(notificationId);
@@ -48,6 +66,18 @@ const Notifications = () => {
       fetchNotifications();
     } catch (error) {
       alert('Failed to mark all notifications as read');
+    }
+  };
+
+  const handlePreferenceChange = async (channel, value) => {
+    const previous = { ...preferences };
+    const next = { ...preferences, [channel]: value };
+    setPreferences(next);
+    try {
+      await studentAPI.updateNotificationPreferences(next);
+    } catch (prefError) {
+      setPreferences(previous);
+      alert('Failed to update notification preferences');
     }
   };
 
@@ -107,6 +137,36 @@ const Notifications = () => {
           Read
         </Button>
       </div>
+
+      <Card>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Notification Preferences</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <label className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+            <span className="text-sm text-gray-700">Portal</span>
+            <input
+              type="checkbox"
+              checked={!!preferences.portal}
+              onChange={(e) => handlePreferenceChange('portal', e.target.checked)}
+            />
+          </label>
+          <label className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+            <span className="text-sm text-gray-700">Email</span>
+            <input
+              type="checkbox"
+              checked={!!preferences.email}
+              onChange={(e) => handlePreferenceChange('email', e.target.checked)}
+            />
+          </label>
+          <label className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+            <span className="text-sm text-gray-700">WhatsApp</span>
+            <input
+              type="checkbox"
+              checked={!!preferences.whatsapp}
+              onChange={(e) => handlePreferenceChange('whatsapp', e.target.checked)}
+            />
+          </label>
+        </div>
+      </Card>
 
       {notifications.length === 0 ? (
         <Card>

@@ -8,6 +8,7 @@ import Button from '../../components/Button';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
+  const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -17,9 +18,16 @@ const AdminDashboard = () => {
 
   const fetchDashboard = async () => {
     try {
-      const response = await adminAPI.getDashboard();
-      if (response.data.success) {
-        setStats(response.data.data);
+      const [dashboardResponse, reportsResponse] = await Promise.all([
+        adminAPI.getDashboard(),
+        adminAPI.getOperationalReports(),
+      ]);
+
+      if (dashboardResponse.data.success) {
+        setStats(dashboardResponse.data.data);
+      }
+      if (reportsResponse.data.success) {
+        setReports(reportsResponse.data.data);
       }
     } catch (error) {
       setError('Failed to load dashboard data');
@@ -140,6 +148,14 @@ const AdminDashboard = () => {
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Blocked Students</span>
               <span className="font-semibold text-red-600">{stats?.users?.blockedStudents || 0}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Pending Approvals</span>
+              <span className="font-semibold">{reports?.pendingApprovals || 0}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Cohort Completion</span>
+              <span className="font-semibold">{(reports?.completionRate || 0).toFixed(1)}%</span>
             </div>
           </div>
         </Card>
