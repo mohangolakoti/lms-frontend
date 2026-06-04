@@ -44,6 +44,17 @@ const Instructors = () => {
     }
   };
 
+  const handleStatusToggle = async (instructor) => {
+    try {
+      const nextStatus = instructor.status === 'active' ? 'blocked' : 'active';
+      await adminAPI.updateInstructorStatus(instructor._id, nextStatus);
+      addToast('success', `Instructor ${nextStatus === 'active' ? 'activated' : 'blocked'} successfully`);
+      fetchInstructors();
+    } catch (err) {
+      addToast('error', err.response?.data?.message || err.response?.data?.error || 'Failed to update instructor status');
+    }
+  };
+
     const handleOpenModal = () => {
       setFormData({ name: '', email: '', mobile: '' });
       setFormError('');
@@ -120,6 +131,24 @@ const Instructors = () => {
       header: 'Registered',
       accessor: 'createdAt',
       render: (instructor) => new Date(instructor.createdAt).toLocaleDateString(),
+    },
+    {
+      header: 'Assigned Courses',
+      accessor: 'assignedCoursesCount',
+      render: (instructor) => instructor.assignedCoursesCount || 0,
+    },
+    {
+      header: 'Actions',
+      accessor: '_id',
+      render: (instructor) => (
+        <Button
+          variant={instructor.status === 'active' ? 'danger' : 'success'}
+          className="text-xs py-1 px-2"
+          onClick={() => handleStatusToggle(instructor)}
+        >
+          {instructor.status === 'active' ? 'Block' : 'Activate'}
+        </Button>
+      ),
     },
   ];
 

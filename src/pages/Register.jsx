@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getRoleDashboard } from '../utils/roleRedirect';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AuthStatusDialog from '../components/AuthStatusDialog';
+import AuthShell from '../components/AuthShell';
 
 const Register = () => {
+  const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,64}$/;
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -48,8 +51,8 @@ const Register = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!strongPasswordPattern.test(formData.password)) {
+      setError('Password must be 8-64 characters with uppercase, lowercase, number, and symbol');
       return;
     }
 
@@ -101,25 +104,13 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
-              <span className="text-white text-2xl font-bold">LMS</span>
-            </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-primary-400 hover:text-primary-500">
-              Sign in
-            </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
+    <AuthShell
+      title="Create your account"
+      altText="Already have an account?"
+      altLink="/login"
+      altLinkText="Sign in"
+    >
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {authStatus && <AuthStatusDialog status={authStatus} onRetry={handleRetry} onNavigate={navigate} />}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -157,10 +148,10 @@ const Register = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Registration Type
               </label>
-              <div className="input-field bg-gray-50 text-gray-700">Student</div>
+              <div className="input-field bg-surface-muted text-text-muted">Student</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-text-base mb-2">
                 Batch
               </label>
               <select
@@ -180,7 +171,7 @@ const Register = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter your password (min 6 characters)"
+              placeholder="8-64 chars, uppercase, lowercase, number, symbol"
               required
             />
             <Input
@@ -200,8 +191,7 @@ const Register = () => {
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </AuthShell>
   );
 };
 

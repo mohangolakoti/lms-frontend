@@ -2,42 +2,42 @@ const Table = ({ columns, data, loading, emptyMessage = 'No data available' }) =
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-200 border-t-brand-600"></div>
       </div>
     );
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-text-subtle">
         <p>{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="overflow-x-auto border border-line-soft rounded-xl">
+      <table className="min-w-full divide-y divide-border-soft">
+        <thead className="bg-surface-muted">
           <tr>
             {columns.map((column, index) => (
               <th
                 key={index}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-6 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider"
               >
                 {column.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-surface-card divide-y divide-border-soft">
           {data.map((row, rowIndex) => (
             <tr
               key={rowIndex}
-              className={`hover:bg-gray-50 ${row.rowClass || ''}`}
+              className={`hover:bg-brand-50/40 ${row.rowClass || ''}`}
             >
               {columns.map((column, colIndex) => (
-                <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-text-base">
                   {column.render ? column.render(row) : row[column.accessor]}
                 </td>
               ))}

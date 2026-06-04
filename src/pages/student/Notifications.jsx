@@ -179,7 +179,7 @@ const Notifications = () => {
           {notifications.map((notification) => (
             <Card
               key={notification._id}
-              className={!notification.read ? 'border-primary-300 bg-primary-50' : ''}
+              className={!notification.read ? 'border-brand-300 bg-brand-50' : ''}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">

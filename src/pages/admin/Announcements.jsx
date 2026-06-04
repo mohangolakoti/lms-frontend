@@ -21,6 +21,8 @@ const Announcements = () => {
     targetType: 'global',
     batchIds: [],
     deliveryChannels: [],
+    scheduledAt: '',
+    expiresAt: '',
   });
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
@@ -58,6 +60,8 @@ const Announcements = () => {
         message: formData.message,
         targetType: formData.targetType,
         deliveryChannels: formData.deliveryChannels,
+        scheduledAt: formData.scheduledAt || undefined,
+        expiresAt: formData.expiresAt || undefined,
       };
 
       if (formData.targetType === 'batch') {
@@ -72,6 +76,8 @@ const Announcements = () => {
         targetType: 'global',
         batchIds: [],
         deliveryChannels: [],
+        scheduledAt: '',
+        expiresAt: '',
       });
       setTimeout(() => {
         setShowModal(false);
@@ -169,13 +175,24 @@ const Announcements = () => {
                         {new Date(announcement.createdAt).toLocaleDateString()}
                       </span>
                     </div>
+                  {announcement.scheduledAt && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-600">Scheduled:</span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(announcement.scheduledAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   </div>
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
                     {['portal', 'email', 'whatsapp'].map((channel) => (
-                      <div key={channel} className="bg-gray-50 border border-gray-200 rounded px-2 py-1">
-                        <span className="font-medium text-gray-700">{channel.toUpperCase()}</span>
+                      <div key={channel} className="bg-surface-muted border border-line-soft rounded px-2 py-1">
+                        <span className="font-medium text-text-base">{channel.toUpperCase()}</span>
                         <span className="text-gray-600 ml-2">
-                          Sent: {getDeliveryStat(announcement, channel, 'sent')} • Failed: {getDeliveryStat(announcement, channel, 'failed')}
+                          Sent: {getDeliveryStat(announcement, channel, 'sent')}
+                          {' • '}Failed: {getDeliveryStat(announcement, channel, 'failed')}
+                          {' • '}Opt-out: {getDeliveryStat(announcement, channel, 'skipped_opt_out')}
+                          {' • '}No contact: {getDeliveryStat(announcement, channel, 'skipped_no_contact')}
                         </span>
                       </div>
                     ))}
@@ -206,6 +223,8 @@ const Announcements = () => {
             targetType: 'global',
             batchIds: [],
             deliveryChannels: [],
+            scheduledAt: '',
+            expiresAt: '',
           });
           setFormError('');
           setSuccess('');
@@ -249,6 +268,21 @@ const Announcements = () => {
             required
             rows={6}
           />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Schedule At (Optional)"
+              type="datetime-local"
+              value={formData.scheduledAt}
+              onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+            />
+            <Input
+              label="Expires At (Optional)"
+              type="datetime-local"
+              value={formData.expiresAt}
+              onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+            />
+          </div>
 
           {/* Target Type Selection */}
           <Select
@@ -302,7 +336,7 @@ const Announcements = () => {
                         });
                       }
                     }}
-                    className="h-4 w-4 text-primary-400 focus:ring-primary-400 border-gray-300 rounded"
+                    className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-line-soft rounded"
                   />
                   <label htmlFor={`channel-${channel}`} className="ml-2 block text-sm text-gray-900">
                     {channel.charAt(0).toUpperCase() + channel.slice(1)}

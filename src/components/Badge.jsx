@@ -1,11 +1,11 @@
 const Badge = ({ children, variant = 'default', className = '' }) => {
   const variants = {
-    default: 'bg-gray-100 text-gray-800',
-    primary: 'bg-primary-100 text-primary-800',
-    success: 'bg-green-100 text-green-800',
-    warning: 'bg-yellow-100 text-yellow-800',
-    danger: 'bg-red-100 text-red-800',
-    info: 'bg-blue-100 text-blue-800',
+    default: 'bg-surface-muted text-text-base',
+    primary: 'bg-brand-100 text-brand-800',
+    success: 'bg-success-100 text-success-700',
+    warning: 'bg-warning-100 text-warning-700',
+    danger: 'bg-danger-100 text-danger-700',
+    info: 'bg-info-100 text-info-700',
   };
 
   return (

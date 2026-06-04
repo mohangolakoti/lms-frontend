@@ -16,7 +16,15 @@ const Certificates = () => {
   const [batches, setBatches] = useState([]);
   const [students, setStudents] = useState([]);
   const [certificates, setCertificates] = useState([]);
-  const [filteredCertificates, setFilteredCertificates] = useState([]);
+  const [certificatePagination, setCertificatePagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+  const [certificateJobs, setCertificateJobs] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -52,18 +60,19 @@ const Certificates = () => {
     batchId: '',
     studentId: '',
     certificateName: '',
+    page: 1,
+    limit: 20,
   });
 
-  const loadData = async () => {
+  const loadReferenceData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      const [templateRes, batchRes, studentRes, certificateRes] = await Promise.all([
+      const [templateRes, batchRes, studentRes] = await Promise.all([
         adminAPI.getCertificateTemplates(),
         adminAPI.getBatches({ limit: 100 }),
         adminAPI.getStudents(),
-        adminAPI.getCertificates(),
       ]);
 
       setTemplates(templateRes?.data?.data || []);
@@ -72,10 +81,6 @@ const Certificates = () => {
       setBatches(Array.isArray(batchPayload) ? batchPayload : (batchPayload?.data || []));
 
       setStudents(studentRes?.data?.data || []);
-
-      const issued = certificateRes?.data?.data || [];
-      setCertificates(issued);
-      setFilteredCertificates(issued);
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Failed to load certificate module data');
     } finally {
@@ -84,12 +89,16 @@ const Certificates = () => {
   };
 
   useEffect(() => {
-    loadData();
+    loadReferenceData();
   }, []);
 
   useEffect(() => {
-    applyFilters();
-  }, [filters, certificates]);
+    fetchCertificates();
+  }, [filters.batchId, filters.studentId, filters.certificateName, filters.page, filters.limit]);
+
+  useEffect(() => {
+    fetchCertificateJobs();
+  }, []);
 
   const showToast = (message) => {
     setToast(message);
@@ -202,10 +211,12 @@ const Certificates = () => {
         throw new Error('Invalid generation job response');
       }
 
-      let attempts = 0;
+      const pollingStartedAt = Date.now();
+      const maxPollingMs = 10 * 60 * 1000;
       let done = false;
-      while (!done && attempts < 120) {
-        attempts += 1;
+      let pollDelayMs = 1500;
+
+      while (!done && Date.now() - pollingStartedAt <= maxPollingMs) {
         const jobRes = await adminAPI.getCertificateJob(jobId);
         const job = jobRes?.data?.data;
         if (job?.status === 'completed') {
@@ -218,16 +229,16 @@ const Certificates = () => {
           throw new Error(job.error || 'Certificate generation job failed');
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, pollDelayMs));
+        pollDelayMs = Math.min(pollDelayMs + 750, 5000);
       }
 
       if (!done) {
-        throw new Error('Certificate generation is taking longer than expected. Please retry in a moment.');
+        throw new Error(`Certificate generation is still processing. Track job ID: ${jobId}`);
       }
 
-      const certificateRes = await adminAPI.getCertificates();
-      const issued = certificateRes?.data?.data || [];
-      setCertificates(issued);
+      await fetchCertificates();
+      await fetchCertificateJobs();
       setShowConfirmModal(false);
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Certificate generation failed');
@@ -236,19 +247,38 @@ const Certificates = () => {
     }
   };
 
-  const applyFilters = () => {
-    const certificateNameFilter = filters.certificateName.trim().toLowerCase();
+  const fetchCertificates = async () => {
+    try {
+      const response = await adminAPI.getCertificates({
+        batchId: filters.batchId || undefined,
+        studentId: filters.studentId || undefined,
+        certificateName: filters.certificateName || undefined,
+        page: filters.page,
+        limit: filters.limit,
+      });
+      const payload = response?.data?.data;
+      setCertificates(payload?.items || []);
+      setCertificatePagination(payload?.pagination || {
+        page: 1,
+        limit: filters.limit,
+        total: 0,
+        pages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to fetch certificates');
+    }
+  };
 
-    const next = certificates.filter((certificate) => {
-      if (filters.batchId && certificate.batchId?._id !== filters.batchId) return false;
-      if (filters.studentId && certificate.studentId?._id !== filters.studentId) return false;
-      if (certificateNameFilter && !String(certificate.certificateName || '').toLowerCase().includes(certificateNameFilter)) {
-        return false;
-      }
-      return true;
-    });
-
-    setFilteredCertificates(next);
+  const fetchCertificateJobs = async () => {
+    try {
+      const response = await adminAPI.getCertificateJobs({ limit: 10 });
+      const payload = response?.data?.data;
+      setCertificateJobs(payload?.items || []);
+    } catch (err) {
+      // Non-blocking fetch
+    }
   };
 
   const handleTemplateUpload = async (e) => {
@@ -278,11 +308,27 @@ const Certificates = () => {
       await adminAPI.createCertificateTemplate(formData);
       showToast('Certificate template uploaded successfully');
       setTemplateForm({ name: '', htmlTemplate: '', backgroundImage: null });
-      await loadData();
+      await loadReferenceData();
+      await fetchCertificates();
+      await fetchCertificateJobs();
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Failed to upload template');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRevokeCertificate = async (certificate) => {
+    const reason = window.prompt('Enter revocation reason (optional):') || '';
+    if (!window.confirm(`Revoke certificate ${certificate.certificateNumber}?`)) {
+      return;
+    }
+    try {
+      await adminAPI.revokeCertificate(certificate._id, reason);
+      showToast('Certificate revoked successfully');
+      await fetchCertificates();
+    } catch (error) {
+      setError(error.response?.data?.message || error.response?.data?.error || 'Failed to revoke certificate');
     }
   };
 
@@ -321,9 +367,23 @@ const Certificates = () => {
       header: 'Verification',
       accessor: 'verify',
       render: (row) => (
-        <Badge variant="info">
-          /verify/{row.certificateNumber}
+        <Badge variant={row.isRevoked ? 'danger' : 'info'}>
+          {row.isRevoked ? 'Revoked' : `/verify/${row.certificateNumber}`}
         </Badge>
+      ),
+    },
+    {
+      header: 'Actions',
+      accessor: '_id',
+      render: (row) => (
+        <Button
+          variant="danger"
+          className="text-xs px-2 py-1"
+          disabled={row.isRevoked}
+          onClick={() => handleRevokeCertificate(row)}
+        >
+          Revoke
+        </Button>
       ),
     },
   ]), []);
@@ -387,14 +447,14 @@ const Certificates = () => {
           <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
             <button
               type="button"
-              className={`px-4 py-2 text-sm font-medium ${generationForm.mode === 'batch' ? 'bg-primary-500 text-white' : 'bg-white text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium ${generationForm.mode === 'batch' ? 'bg-brand-600 text-white' : 'bg-white text-text-muted'}`}
               onClick={() => setGenerationForm({ ...generationForm, mode: 'batch', studentId: '' })}
             >
               Batch
             </button>
             <button
               type="button"
-              className={`px-4 py-2 text-sm font-medium ${generationForm.mode === 'individual' ? 'bg-primary-500 text-white' : 'bg-white text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium ${generationForm.mode === 'individual' ? 'bg-brand-600 text-white' : 'bg-white text-text-muted'}`}
               onClick={() => setGenerationForm({ ...generationForm, mode: 'individual', batchId: '' })}
             >
               Individual
@@ -516,7 +576,7 @@ const Certificates = () => {
           <Select
             label="Filter by Batch"
             value={filters.batchId}
-            onChange={(e) => setFilters({ ...filters, batchId: e.target.value })}
+            onChange={(e) => setFilters({ ...filters, batchId: e.target.value, page: 1 })}
             options={[
               { value: '', label: 'All batches' },
               ...batches.map((batch) => ({ value: batch._id, label: batch.name })),
@@ -526,7 +586,7 @@ const Certificates = () => {
           <Select
             label="Filter by Student"
             value={filters.studentId}
-            onChange={(e) => setFilters({ ...filters, studentId: e.target.value })}
+            onChange={(e) => setFilters({ ...filters, studentId: e.target.value, page: 1 })}
             options={[
               { value: '', label: 'All students' },
               ...students.map((student) => ({ value: student._id, label: student.name })),
@@ -536,16 +596,72 @@ const Certificates = () => {
           <Input
             label="Filter by Certificate Name"
             value={filters.certificateName}
-            onChange={(e) => setFilters({ ...filters, certificateName: e.target.value })}
+            onChange={(e) => setFilters({ ...filters, certificateName: e.target.value, page: 1 })}
             placeholder="Search certificate name"
           />
         </div>
 
         <Table
           columns={certificateColumns}
-          data={filteredCertificates}
+          data={certificates}
           loading={loading}
           emptyMessage="No certificates generated yet"
+        />
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <p className="text-text-subtle">
+            Showing page {certificatePagination.page || 1} of {certificatePagination.pages || 1}
+            {' '}({certificatePagination.total || 0} certificates)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!certificatePagination.hasPrevPage}
+              onClick={() => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!certificatePagination.hasNextPage}
+              onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Recent Certificate Jobs">
+        <Table
+          columns={[
+            { header: 'Job ID', accessor: '_id', render: (job) => String(job._id).slice(-8) },
+            {
+              header: 'Status',
+              accessor: 'status',
+              render: (job) => (
+                <Badge
+                  variant={
+                    job.status === 'completed'
+                      ? 'success'
+                      : job.status === 'failed'
+                        ? 'danger'
+                        : job.status === 'processing'
+                          ? 'warning'
+                          : 'info'
+                  }
+                >
+                  {job.status}
+                </Badge>
+              ),
+            },
+            { header: 'Requested By', accessor: 'requestedBy', render: (job) => job.requestedBy?.name || 'N/A' },
+            { header: 'Created', accessor: 'createdAt', render: (job) => new Date(job.createdAt).toLocaleString() },
+          ]}
+          data={certificateJobs}
+          loading={false}
+          emptyMessage="No recent jobs"
         />
       </Card>
 

@@ -27,13 +27,13 @@ const Courses = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Courses</h1>
-        <p className="text-gray-600">Step up and skill up! Interact live with passionate practitioners, learn without limits, and bloom your dreams.</p>
+        <h1 className="page-title mb-2">Courses</h1>
+        <p className="text-text-muted">Track your assigned courses and continue exactly where you left off.</p>
       </div>
 
       {courses.length === 0 ? (
         <Card>
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-text-subtle">
             <p>No courses assigned yet. Check back later!</p>
           </div>
         </Card>
@@ -42,17 +42,17 @@ const Courses = () => {
           {courses.map((course) => (
             <Card key={course._id} className="hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center">
                   <span className="text-2xl">📚</span>
                 </div>
                 <Badge variant={course.level === 'Beginner' ? 'success' : course.level === 'Intermediate' ? 'warning' : 'danger'}>
                   {course.level}
                 </Badge>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{course.title}</h3>
-              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
+              <h3 className="text-lg font-semibold text-text-base mb-2">{course.title}</h3>
+              <p className="text-sm text-text-muted mb-4 line-clamp-2">{course.description}</p>
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 text-sm text-text-subtle">
                   <span>👨‍🏫</span>
                   <span>{course.instructorId?.name || 'Instructor'}</span>
                 </div>
@@ -60,12 +60,12 @@ const Courses = () => {
               </div>
               <div className="mb-4">
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-600">Progress</span>
+                  <span className="text-text-muted">Progress</span>
                   <span className="font-medium">{Math.round(course.progress || 0)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-surface-muted rounded-full h-2">
                   <div
-                    className="bg-primary-400 h-2 rounded-full"
+                    className="bg-brand-500 h-2 rounded-full"
                     style={{ width: `${course.progress || 0}%` }}
                   />
                 </div>

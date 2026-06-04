@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { adminAPI } from '../services/api';
 
 export const useStudents = (filters = {}) => {
@@ -13,16 +13,26 @@ export const useStudents = (filters = {}) => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search || '');
 
   useEffect(() => {
-    fetchStudents();
-  }, [filters.status, filters.batch, filters.search, filters.approvalStatus, filters.batchId, filters.page, filters.limit]);
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearch(filters.search || '');
+    }, 300);
 
-  const fetchStudents = async () => {
+    return () => clearTimeout(timeoutId);
+  }, [filters.search]);
+
+  const requestFilters = useMemo(() => ({
+    ...filters,
+    search: debouncedSearch,
+  }), [filters, debouncedSearch]);
+
+  const fetchStudents = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await adminAPI.getStudents(filters);
+      const response = await adminAPI.getStudents(requestFilters);
       if (response.data.success) {
         setStudents(response.data.data);
         setPagination(response.data.pagination || {
@@ -39,7 +49,11 @@ export const useStudents = (filters = {}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestFilters]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
 
   return { students, pagination, loading, error, refetch: fetchStudents };
 };

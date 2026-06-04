@@ -4,6 +4,7 @@ import { authAPI } from '../services/api';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AuthShell from '../components/AuthShell';
 
 const ResetPassword = () => {
   const { resettoken } = useParams();
@@ -62,22 +63,11 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
-              <span className="text-white text-2xl font-bold">LMS</span>
-            </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Reset your password
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your new password below.
-          </p>
-        </div>
-        <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
+    <AuthShell
+      title="Reset your password"
+      subtitle="Enter your new secure password below."
+    >
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
               {error}
@@ -95,7 +85,7 @@ const ResetPassword = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter new password (min 6 characters)"
+              placeholder="8-64 chars, uppercase, lowercase, number, symbol"
               required
             />
             <Input
@@ -116,13 +106,12 @@ const ResetPassword = () => {
           </div>
 
           <div className="text-center">
-            <Link to="/login" className="font-medium text-primary-400 hover:text-primary-500">
+            <Link to="/login" className="font-medium text-brand-700 hover:text-brand-800">
               Back to login
             </Link>
           </div>
         </form>
-      </div>
-    </div>
+    </AuthShell>
   );
 };
 

@@ -1,21 +1,30 @@
 import { useState, useEffect } from 'react';
 import { adminAPI, instructorAPI, studentAPI } from '../services/api';
 
-export const useAdminCourses = () => {
+export const useAdminCourses = (filters = {}) => {
   const [courses, setCourses] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchCourses();
-  }, []);
+  }, [filters.page, filters.limit, filters.search, filters.visibility, filters.batchId]);
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const response = await adminAPI.getCourses();
+      const response = await adminAPI.getCourses(filters);
       if (response.data.success) {
         setCourses(response.data.data);
+        setPagination(response.data.pagination || pagination);
       }
     } catch (error) {
       setError(error.response?.data?.error || 'Failed to fetch courses');
@@ -24,7 +33,7 @@ export const useAdminCourses = () => {
     }
   };
 
-  return { courses, loading, error, refetch: fetchCourses };
+  return { courses, pagination, loading, error, refetch: fetchCourses };
 };
 
 export const useInstructorCourses = () => {

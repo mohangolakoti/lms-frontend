@@ -15,7 +15,14 @@ import { adminAPI } from '../../services/api';
 const DEFAULT_ROLE = 'viewer';
 
 const Courses = () => {
-  const { courses, loading, error, refetch } = useAdminCourses();
+  const [listFilters, setListFilters] = useState({
+    search: '',
+    visibility: '',
+    batchId: '',
+    page: 1,
+    limit: 20,
+  });
+  const { courses, pagination, loading, error, refetch } = useAdminCourses(listFilters);
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [instructors, setInstructors] = useState([]);
@@ -156,6 +163,17 @@ const Courses = () => {
     }
   };
 
+  const handleToggleVisibility = async (course) => {
+    try {
+      await adminAPI.updateCourse(course._id, {
+        visibility: course.visibility === 'published' ? 'draft' : 'published',
+      });
+      refetch();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to update course visibility');
+    }
+  };
+
   const columns = [
     {
       header: 'Title',
@@ -212,6 +230,13 @@ const Courses = () => {
             </Button>
           </Link>
           <Button
+            variant="secondary"
+            className="text-xs py-1 px-2"
+            onClick={() => handleToggleVisibility(course)}
+          >
+            {course.visibility === 'published' ? 'Unpublish' : 'Publish'}
+          </Button>
+          <Button
             variant="outline"
             className="text-xs py-1 px-2"
             onClick={() => handleOpenModal(course)}
@@ -233,7 +258,7 @@ const Courses = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Courses</h1>
+        <h1 className="page-title">Courses</h1>
         <Button onClick={() => handleOpenModal()}>Create Course</Button>
       </div>
 
@@ -244,12 +269,66 @@ const Courses = () => {
       )}
 
       <Card>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <Input
+            placeholder="Search courses..."
+            value={listFilters.search}
+            onChange={(e) => setListFilters((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
+          />
+          <Select
+            value={listFilters.visibility}
+            onChange={(e) => setListFilters((prev) => ({ ...prev, visibility: e.target.value, page: 1 }))}
+            options={[
+              { value: '', label: 'All Visibility' },
+              { value: 'published', label: 'Published' },
+              { value: 'draft', label: 'Draft' },
+            ]}
+          />
+          <Select
+            value={listFilters.batchId}
+            onChange={(e) => setListFilters((prev) => ({ ...prev, batchId: e.target.value, page: 1 }))}
+            options={[
+              { value: '', label: 'All Batches' },
+              ...batches.map((batch) => ({ value: batch._id, label: batch.name })),
+            ]}
+          />
+          <Button
+            variant="outline"
+            onClick={() => setListFilters({ search: '', visibility: '', batchId: '', page: 1, limit: listFilters.limit })}
+          >
+            Clear
+          </Button>
+        </div>
         <Table
           columns={columns}
           data={courses}
           loading={loading}
           emptyMessage="No courses found"
         />
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <p className="text-text-subtle">
+            Showing page {pagination?.page || 1} of {pagination?.pages || 1}
+            {' '}({pagination?.total || 0} courses)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!pagination?.hasPrevPage}
+              onClick={() => setListFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!pagination?.hasNextPage}
+              onClick={() => setListFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </Card>
 
       <Modal
@@ -336,11 +415,11 @@ const Courses = () => {
             placeholder="https://example.com/image.jpg"
           />
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-text-base mb-2">
               Instructors <span className="text-red-500">*</span>
             </label>
 
-            <div className="border rounded-lg p-3 bg-white">
+            <div className="border border-line-soft rounded-xl p-3 bg-white">
               <input
                 type="text"
                 className="input-field mb-3"
@@ -350,9 +429,9 @@ const Courses = () => {
                 disabled={loadingInstructors}
               />
 
-              <div className="max-h-40 overflow-y-auto border rounded-lg mb-3">
+              <div className="max-h-40 overflow-y-auto border border-line-soft rounded-lg mb-3">
                 {filteredInstructors.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">No instructors found</div>
+                  <div className="px-3 py-2 text-sm text-text-subtle">No instructors found</div>
                 ) : (
                   filteredInstructors.map((instructor) => {
                     const isSelected = selectedInstructorIds.includes(instructor._id);
@@ -360,7 +439,7 @@ const Courses = () => {
                     return (
                       <label
                         key={instructor._id}
-                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-brand-50/50"
                       >
                         <input
                           type="checkbox"
@@ -395,7 +474,7 @@ const Courses = () => {
 
               {formData.courseInstructors.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <div className="text-xs font-medium text-text-subtle uppercase tracking-wide">
                     Assigned Instructor Roles
                   </div>
                   {formData.courseInstructors.map((entry) => {

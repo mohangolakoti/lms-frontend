@@ -133,7 +133,7 @@ const AssessmentView = () => {
         </Link>
         {!submission && timeRemaining > 0 && (
           <div className="flex items-center gap-4">
-            <div className="text-lg font-semibold text-primary-600">
+            <div className="text-lg font-semibold text-brand-700">
               Time Remaining: {formatTime(timeRemaining)}
             </div>
             <Button onClick={handleSubmit} disabled={submitting}>
@@ -160,7 +160,7 @@ const AssessmentView = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-900">Your Score</p>
-                <p className="text-2xl font-bold text-primary-600">
+                <p className="text-2xl font-bold text-brand-700">
                   {submission.score} / {submission.totalMarks} ({submission.percentage?.toFixed(1)}%)
                 </p>
               </div>
@@ -197,7 +197,7 @@ const AssessmentView = () => {
                             value={option}
                             checked={answers[index] === option}
                             onChange={(e) => handleAnswerChange(index, e.target.value)}
-                            className="text-primary-400 focus:ring-primary-400"
+                            className="text-brand-600 focus:ring-brand-500"
                           />
                           <span>{option}</span>
                         </label>
@@ -213,7 +213,7 @@ const AssessmentView = () => {
                           value="true"
                           checked={answers[index] === 'true'}
                           onChange={(e) => handleAnswerChange(index, e.target.value)}
-                          className="text-primary-400 focus:ring-primary-400"
+                          className="text-brand-600 focus:ring-brand-500"
                         />
                         <span>True</span>
                       </label>
@@ -224,7 +224,7 @@ const AssessmentView = () => {
                           value="false"
                           checked={answers[index] === 'false'}
                           onChange={(e) => handleAnswerChange(index, e.target.value)}
-                          className="text-primary-400 focus:ring-primary-400"
+                          className="text-brand-600 focus:ring-brand-500"
                         />
                         <span>False</span>
                       </label>

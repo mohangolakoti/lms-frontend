@@ -61,9 +61,9 @@ const InstructorDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-primary-400 to-primary-600 rounded-xl p-6 text-white">
-        <h1 className="text-3xl font-bold mb-2">Welcome Back, Instructor!</h1>
-        <p className="text-primary-100">Ready to continue teaching? You're making great progress!</p>
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-6 text-white shadow-card">
+        <h1 className="text-3xl font-semibold mb-2">Welcome Back, Instructor!</h1>
+        <p className="text-brand-100">Ready to continue teaching? You're making great progress!</p>
       </div>
 
       {/* Stats Grid */}

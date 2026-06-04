@@ -224,7 +224,7 @@ const AssessmentSubmissions = () => {
 
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <details className="group">
-                    <summary className="cursor-pointer text-sm font-medium text-primary-600 hover:text-primary-700">
+                    <summary className="cursor-pointer text-sm font-medium text-brand-700 hover:text-brand-800">
                       View Answers ({submission.answers?.length || 0} questions)
                     </summary>
                     <div className="mt-3 space-y-3">

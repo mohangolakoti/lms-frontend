@@ -111,13 +111,13 @@ const CourseAnalytics = () => {
               <div key={index} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-gray-900">{module.title}</h4>
-                  <span className="text-sm font-medium text-primary-600">
+                  <span className="text-sm font-medium text-brand-700">
                     {module.avgCompletion?.toFixed(1) || 0}% Complete
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className="bg-primary-400 h-2 rounded-full"
+                    className="bg-brand-500 h-2 rounded-full"
                     style={{ width: `${module.avgCompletion || 0}%` }}
                   />
                 </div>

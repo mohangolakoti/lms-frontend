@@ -66,7 +66,7 @@ const StudentProgress = () => {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="bg-primary-400 h-2 rounded-full"
+              className="bg-brand-500 h-2 rounded-full"
               style={{ width: `${prog.overallCoursePercentage || 0}%` }}
             />
           </div>

@@ -143,9 +143,9 @@ const StudentDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-primary-400 to-primary-600 rounded-xl p-6 text-white">
-        <h1 className="text-3xl font-bold mb-2">Welcome Back, {user?.name || 'Student'}!</h1>
-        <p className="text-primary-100">Ready to continue your learning journey? You're making great progress!</p>
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-6 text-white shadow-card">
+        <h1 className="text-3xl font-semibold mb-2">Welcome Back, {user?.name || 'Student'}!</h1>
+        <p className="text-brand-100">Ready to continue your learning journey? You're making great progress!</p>
       </div>
 
       {/* Assessment Activity Stats */}
@@ -204,7 +204,7 @@ const StudentDashboard = () => {
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <div className="w-12 h-12 bg-brand-100 rounded-lg flex items-center justify-center">
                       <span className="text-2xl">📚</span>
                     </div>
                     <div className="flex-1">
@@ -236,13 +236,13 @@ const StudentDashboard = () => {
 
       <Card title="Recommended Next Lesson">
         {recommendedLesson ? (
-          <div className="flex items-center justify-between p-4 border border-primary-200 bg-primary-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-brand-200 bg-brand-50 rounded-lg">
             <div>
               <p className="font-semibold text-gray-900">{recommendedLesson.lessonTitle}</p>
               <p className="text-sm text-gray-600">
                 {recommendedLesson.courseTitle} • {recommendedLesson.moduleTitle}
               </p>
-              <p className="text-xs text-primary-700 mt-1">
+              <p className="text-xs text-brand-700 mt-1">
                 Current course progress: {Math.round(recommendedLesson.progress)}%
               </p>
             </div>
@@ -298,7 +298,7 @@ const StudentDashboard = () => {
                 key={announcement._id}
                 className={`p-4 border rounded-lg ${
                   announcement.pinned 
-                    ? 'border-primary-300 bg-primary-50' 
+                    ? 'border-brand-300 bg-brand-50' 
                     : 'border-gray-200 bg-white'
                 }`}
               >
@@ -307,7 +307,7 @@ const StudentDashboard = () => {
                     <div className="flex items-center gap-2 mb-2">
                       <h4 className="font-semibold text-gray-900">{announcement.title}</h4>
                       {announcement.pinned && (
-                        <span className="px-2 py-1 bg-primary-200 text-primary-800 rounded text-xs font-medium">
+                        <span className="px-2 py-1 bg-brand-200 text-brand-800 rounded text-xs font-medium">
                           Pinned
                         </span>
                       )}

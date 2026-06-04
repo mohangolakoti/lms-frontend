@@ -11,6 +11,15 @@ const Batches = () => {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [filters, setFilters] = useState({ page: 1, limit: 10, includeDeleted: true });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBatchName, setNewBatchName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -28,10 +37,11 @@ const Batches = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await adminAPI.getBatches();
+      const response = await adminAPI.getBatches(filters);
       const payload = response?.data?.data;
       const items = Array.isArray(payload) ? payload : (payload?.data || []);
       setBatches(items);
+      setPagination(response?.data?.pagination || pagination);
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Failed to load batches');
     } finally {
@@ -41,7 +51,7 @@ const Batches = () => {
 
   useEffect(() => {
     fetchBatches();
-  }, []);
+  }, [filters.page, filters.limit, filters.includeDeleted]);
 
   const handleCreateBatch = async (e) => {
     e.preventDefault();
@@ -80,6 +90,31 @@ const Batches = () => {
     }
   };
 
+  const handleDeleteBatch = async (batch) => {
+    const dependencyMessage = `Students: ${batch.dependencyStats?.students || 0}, Courses: ${batch.dependencyStats?.courses || 0}`;
+    if (!window.confirm(`Delete batch "${batch.name}"?\n${dependencyMessage}`)) {
+      return;
+    }
+
+    try {
+      await adminAPI.deleteBatch(batch._id);
+      addToast('success', 'Batch deleted successfully');
+      await fetchBatches();
+    } catch (err) {
+      addToast('error', err.response?.data?.message || err.response?.data?.error || 'Failed to delete batch');
+    }
+  };
+
+  const handleRestoreBatch = async (batch) => {
+    try {
+      await adminAPI.restoreBatch(batch._id);
+      addToast('success', 'Batch restored successfully');
+      await fetchBatches();
+    } catch (err) {
+      addToast('error', err.response?.data?.message || err.response?.data?.error || 'Failed to restore batch');
+    }
+  };
+
   const columns = useMemo(() => [
     {
       header: 'Name',
@@ -114,6 +149,15 @@ const Batches = () => {
       ),
     },
     {
+      header: 'Dependencies',
+      accessor: 'dependencyStats',
+      render: (batch) => (
+        <span className="text-text-subtle text-sm">
+          {batch.dependencyStats?.students || 0} students · {batch.dependencyStats?.courses || 0} courses
+        </span>
+      ),
+    },
+    {
       header: 'Activate',
       accessor: 'toggle',
       render: (batch) => (
@@ -122,22 +166,38 @@ const Batches = () => {
             type="checkbox"
             className="sr-only peer"
             checked={!!batch.isActive}
+            disabled={!!batch.isDeleted}
             onChange={() => handleToggleActive(batch)}
           />
-          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:bg-primary-500 relative after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+          <div className="w-11 h-6 bg-surface-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-300 rounded-full peer peer-checked:bg-brand-600 relative after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-line-soft after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
         </label>
       ),
     },
-  ], []);
-
-  const activeBatchId = batches.find((b) => b.isActive)?._id;
+    {
+      header: 'Actions',
+      accessor: '_id',
+      render: (batch) => (
+        <div className="flex items-center gap-2">
+          {batch.isDeleted ? (
+            <Button variant="outline" className="text-xs px-2 py-1" onClick={() => handleRestoreBatch(batch)}>
+              Restore
+            </Button>
+          ) : (
+            <Button variant="danger" className="text-xs px-2 py-1" onClick={() => handleDeleteBatch(batch)}>
+              Delete
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ], [filters.page]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Batches</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage student batches. Multiple batches can be active simultaneously.</p>
+          <h1 className="page-title">Batches</h1>
+          <p className="text-sm text-text-subtle mt-1">Manage batch lifecycle, dependencies, and activation status.</p>
         </div>
         <Button variant="primary" onClick={() => setShowCreateModal(true)}>
           Create New Batch
@@ -151,6 +211,16 @@ const Batches = () => {
       )}
 
       <Card>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <label className="inline-flex items-center gap-2 text-sm text-text-subtle">
+            <input
+              type="checkbox"
+              checked={filters.includeDeleted}
+              onChange={(e) => setFilters((prev) => ({ ...prev, includeDeleted: e.target.checked, page: 1 }))}
+            />
+            Show deleted batches
+          </label>
+        </div>
         <Table
           columns={columns}
           data={batches.map((b) => ({
@@ -160,6 +230,30 @@ const Batches = () => {
           loading={loading}
           emptyMessage="No batches found"
         />
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <p className="text-text-subtle">
+            Showing page {pagination.page || 1} of {pagination.pages || 1}
+            {' '}({pagination.total || 0} batches)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!pagination.hasPrevPage}
+              onClick={() => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              className="text-xs px-3 py-1"
+              disabled={!pagination.hasNextPage}
+              onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </Card>
 
       <Modal

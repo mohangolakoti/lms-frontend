@@ -160,7 +160,7 @@ const LessonView = () => {
                     onClick={() => setExpandedModuleId(isExpanded ? null : module._id)}
                     className={`w-full text-left p-3 font-medium flex items-center justify-between transition-all ${
                       isCurrentModule
-                        ? 'bg-primary-50 text-primary-700 border-b border-primary-200'
+                        ? 'bg-brand-50 text-brand-700 border-b border-brand-200'
                         : 'bg-white text-gray-900 hover:bg-gray-50'
                     }`}
                   >
@@ -189,7 +189,7 @@ const LessonView = () => {
                             onClick={() => navigate(`/student/courses/${courseId}/lessons/${lesson._id}`)}
                             className={`w-full text-left px-4 py-3 transition-all text-sm flex items-start gap-3 group ${
                               isActive
-                                ? 'bg-primary-100 border-l-4 border-primary-500'
+                                ? 'bg-brand-100 border-l-4 border-brand-500'
                                 : 'bg-gray-50 hover:bg-gray-100'
                             }`}
                           >
@@ -197,14 +197,14 @@ const LessonView = () => {
                               isCompleted
                                 ? 'bg-green-500 text-white'
                                 : isActive
-                                ? 'bg-primary-500 text-white'
+                                ? 'bg-brand-600 text-white'
                                 : 'bg-gray-300 text-gray-600'
                             }`}>
                               {isCompleted ? '✓' : lessonIndex + 1}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className={`font-medium truncate ${
-                                isActive ? 'text-primary-700' : 'text-gray-900 group-hover:text-primary-600'
+                                isActive ? 'text-brand-700' : 'text-text-base group-hover:text-brand-600'
                               }`}>
                                 {lesson.title}
                               </p>

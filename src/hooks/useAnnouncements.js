@@ -6,10 +6,12 @@ export const useAnnouncements = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pagination, setPagination] = useState({
-    current: 1,
+    page: 1,
     limit: 10,
     total: 0,
     pages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
   });
 
   useEffect(() => {

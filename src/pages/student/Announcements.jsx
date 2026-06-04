@@ -59,7 +59,7 @@ const Announcements = () => {
           {announcements.map((announcement) => (
             <Card
               key={announcement._id}
-              className={announcement.pinned ? 'border-primary-300 bg-primary-50' : ''}
+              className={announcement.pinned ? 'border-brand-300 bg-brand-50' : ''}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">

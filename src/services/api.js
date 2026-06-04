@@ -142,16 +142,21 @@ export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
   getOperationalReports: () => api.get('/admin/reports/operational'),
   getStudents: (params) => api.get('/admin/students', { params }),
+  exportStudents: (params) => api.get('/admin/students/export', { params, responseType: 'blob' }),
+  bulkUpdateStudents: (data) => api.post('/admin/students/bulk-actions', data),
+  getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
   getStudent: (id) => api.get(`/admin/students/${id}`),
   updateStudentStatus: (id, status) => 
     api.put(`/admin/students/${id}/status`, { status }),
   approveStudent: (id) => api.put(`/admin/students/${id}/approve`),
-  rejectStudent: (id) => api.put(`/admin/students/${id}/reject`),
+  rejectStudent: (id, data = {}) => api.put(`/admin/students/${id}/reject`, data),
   updateStudentAcademic: (id, data) => api.put(`/admin/students/${id}/update-academic`, data),
   getBatches: (params) => api.get('/admin/batches', { params }),
   createBatch: (data) => api.post('/admin/batches', data),
   updateBatchStatus: (id, isActive) => api.put(`/admin/batches/${id}/status`, { isActive }),
-  getCourses: () => api.get('/admin/courses'),
+  deleteBatch: (id) => api.delete(`/admin/batches/${id}`),
+  restoreBatch: (id) => api.put(`/admin/batches/${id}/restore`),
+  getCourses: (params) => api.get('/admin/courses', { params }),
   createCourse: (data) => api.post('/admin/courses', data),
   updateCourse: (id, data) => api.put(`/admin/courses/${id}`, data),
   deleteCourse: (id) => api.delete(`/admin/courses/${id}`),
@@ -161,6 +166,8 @@ export const adminAPI = {
   deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
   getInstructors: () => api.get('/admin/instructors'),
   createInstructor: (data) => api.post('/admin/instructors', data),
+  updateInstructorStatus: (id, status) => api.put(`/admin/instructors/${id}/status`, { status }),
+  getHealth: () => api.get('/health'),
   getCertificateTemplates: () => api.get('/certificates/templates'),
   createCertificateTemplate: (formData) =>
     api.post('/certificates/templates', formData, {
@@ -168,8 +175,11 @@ export const adminAPI = {
     }),
   previewCertificate: (data) => api.post('/certificates/preview', data),
   generateCertificates: (data) => api.post('/certificates/generate', data),
+  getCertificateJobs: (params) => api.get('/certificates/jobs', { params }),
   getCertificateJob: (jobId) => api.get(`/certificates/jobs/${jobId}`),
   getCertificates: (params) => api.get('/certificates/admin', { params }),
+  revokeCertificate: (certificateId, reason) =>
+    api.put(`/certificates/admin/${certificateId}/revoke`, { reason }),
 };
 
 // Instructor API

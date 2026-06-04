@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getRoleDashboard } from '../utils/roleRedirect';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AuthStatusDialog from '../components/AuthStatusDialog';
+import AuthShell from '../components/AuthShell';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -79,25 +81,13 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
-              <span className="text-white text-2xl font-bold">LMS</span>
-            </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link to="/register" className="font-medium text-primary-400 hover:text-primary-500">
-              create a new account
-            </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
+    <AuthShell
+      title="Sign in to your account"
+      altText="Or"
+      altLink="/register"
+      altLinkText="create a new account"
+    >
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {authStatus && <AuthStatusDialog status={authStatus} onRetry={handleRetry} />}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -131,15 +121,15 @@ const Login = () => {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 text-primary-400 focus:ring-primary-400 border-gray-300 rounded"
+                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-line-soft rounded"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-text-base">
                 Remember me
               </label>
             </div>
 
             <div className="text-sm">
-              <Link to="/forgot-password" className="font-medium text-primary-400 hover:text-primary-500">
+              <Link to="/forgot-password" className="font-medium text-brand-700 hover:text-brand-800">
                 Forgot password?
               </Link>
             </div>
@@ -151,8 +141,7 @@ const Login = () => {
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </AuthShell>
   );
 };
 

@@ -57,6 +57,7 @@ const StudentDetail = () => {
   }
 
   const isBlocked = localStudent.status === 'blocked';
+  const approvalTimeline = localStudent.approvalHistory || [];
 
   return (
     <div className="space-y-6">
@@ -103,6 +104,20 @@ const StudentDetail = () => {
             </Badge>
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Approval</label>
+            <Badge
+              variant={
+                localStudent.approvalStatus === 'approved'
+                  ? 'success'
+                  : localStudent.approvalStatus === 'rejected'
+                    ? 'danger'
+                    : 'warning'
+              }
+            >
+              {localStudent.approvalStatus || 'pending'}
+            </Badge>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Registered</label>
             <p className="text-gray-900">
               {formatDate(localStudent.createdAt)}
@@ -117,6 +132,42 @@ const StudentDetail = () => {
             </div>
           )}
         </div>
+      </Card>
+
+      <Card title="Approval Timeline">
+        {approvalTimeline.length === 0 ? (
+          <p className="text-sm text-gray-500">No approval actions recorded yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {approvalTimeline
+              .slice()
+              .sort((a, b) => new Date(b.changedAt || 0) - new Date(a.changedAt || 0))
+              .map((entry, idx) => (
+                <div key={`${entry.changedAt || idx}-${entry.status || 'status'}`} className="rounded-lg border border-line-soft p-3">
+                  <div className="flex items-center justify-between">
+                    <Badge
+                      variant={
+                        entry.status === 'approved'
+                          ? 'success'
+                          : entry.status === 'rejected'
+                            ? 'danger'
+                            : 'warning'
+                      }
+                    >
+                      {entry.status || 'pending'}
+                    </Badge>
+                    <span className="text-xs text-gray-500">{formatDate(entry.changedAt, true)}</span>
+                  </div>
+                  <p className="text-sm text-gray-700 mt-2">
+                    By: {entry.changedBy?.name || entry.changedBy?.email || 'System'}
+                  </p>
+                  {entry.reason && (
+                    <p className="text-sm text-gray-600 mt-1">Reason: {entry.reason}</p>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
       </Card>
 
       {localStudent.progress && localStudent.progress.length > 0 && (
@@ -134,7 +185,7 @@ const StudentDetail = () => {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className="bg-primary-400 h-2 rounded-full"
+                    className="bg-brand-500 h-2 rounded-full"
                     style={{ width: `${prog.overallCoursePercentage}%` }}
                   />
                 </div>

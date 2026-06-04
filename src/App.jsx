@@ -24,6 +24,7 @@ import Instructors from './pages/admin/Instructors';
 import AdminAnnouncements from './pages/admin/Announcements';
 import Batches from './pages/admin/Batches';
 import AdminCertificates from './pages/admin/Certificates';
+import AuditLogs from './pages/admin/AuditLogs';
 
 // Instructor Pages
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
@@ -53,7 +54,7 @@ const HomeRedirect = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-400"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-400"></div>
       </div>
     );
   }
@@ -98,6 +99,7 @@ function App() {
                     <Route path="instructors" element={<Instructors />} />
                     <Route path="announcements" element={<AdminAnnouncements />} />
                     <Route path="certificates" element={<AdminCertificates />} />
+                    <Route path="audit-logs" element={<AuditLogs />} />
                     <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>
                 </AdminLayout>

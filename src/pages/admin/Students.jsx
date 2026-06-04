@@ -25,7 +25,9 @@ const Students = () => {
   const [editingId, setEditingId] = useState(null);
   const [editValues, setEditValues] = useState({ term: '', batchId: '' });
   const [confirmState, setConfirmState] = useState({ open: false, action: null, student: null });
+  const [rejectReason, setRejectReason] = useState('');
   const [toasts, setToasts] = useState([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
 
   const addToast = (type, message) => {
     const id = Date.now();
@@ -67,6 +69,47 @@ const Students = () => {
     }
   };
 
+  const handleExportStudents = async () => {
+    try {
+      const response = await adminAPI.exportStudents({
+        status: filters.status || undefined,
+        approvalStatus: filters.approvalStatus || undefined,
+        batchId: filters.batchId || undefined,
+      });
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'students-export.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      addToast('success', 'Students export downloaded');
+    } catch (error) {
+      addToast('error', 'Failed to export students');
+    }
+  };
+
+  const handleBulkAction = async (action) => {
+    if (selectedStudentIds.length === 0) {
+      addToast('error', 'Select at least one student');
+      return;
+    }
+    try {
+      await adminAPI.bulkUpdateStudents({
+        studentIds: selectedStudentIds,
+        action,
+        reason: action === 'reject' ? rejectReason : undefined,
+      });
+      addToast('success', `Bulk ${action} completed`);
+      setSelectedStudentIds([]);
+      refetch();
+    } catch (error) {
+      addToast('error', error.response?.data?.message || error.response?.data?.error || 'Bulk action failed');
+    }
+  };
+
   const handleApprove = async (studentId) => {
     try {
       await adminAPI.approveStudent(studentId);
@@ -77,9 +120,9 @@ const Students = () => {
     }
   };
 
-  const handleReject = async (studentId) => {
+  const handleReject = async (studentId, reason = '') => {
     try {
-      await adminAPI.rejectStudent(studentId);
+      await adminAPI.rejectStudent(studentId, { reason: reason || undefined });
       addToast('success', 'Student rejected successfully');
       refetch();
     } catch (error) {
@@ -121,6 +164,7 @@ const Students = () => {
 
   const closeConfirm = () => {
     setConfirmState({ open: false, action: null, student: null });
+    setRejectReason('');
   };
 
   const handleConfirmAction = async () => {
@@ -130,7 +174,7 @@ const Students = () => {
     if (action === 'approve') {
       await handleApprove(student._id);
     } else if (action === 'reject') {
-      await handleReject(student._id);
+      await handleReject(student._id, rejectReason);
     } else if (action === 'block') {
       await handleStatusChange(student._id, 'blocked');
     } else if (action === 'unblock') {
@@ -159,6 +203,35 @@ const Students = () => {
   }));
 
   const columns = useMemo(() => [
+    {
+      header: (
+        <input
+          type="checkbox"
+          checked={students.length > 0 && selectedStudentIds.length === students.length}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedStudentIds(students.map((student) => student._id));
+            } else {
+              setSelectedStudentIds([]);
+            }
+          }}
+        />
+      ),
+      accessor: '_select',
+      render: (student) => (
+        <input
+          type="checkbox"
+          checked={selectedStudentIds.includes(student._id)}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedStudentIds((prev) => [...prev, student._id]);
+            } else {
+              setSelectedStudentIds((prev) => prev.filter((id) => id !== student._id));
+            }
+          }}
+        />
+      ),
+    },
     {
       header: 'Name',
       accessor: 'name',
@@ -213,6 +286,15 @@ const Students = () => {
       },
     },
     {
+      header: 'Account Status',
+      accessor: 'status',
+      render: (student) => (
+        <Badge variant={student.status === 'active' ? 'success' : 'danger'}>
+          {student.status || 'unknown'}
+        </Badge>
+      ),
+    },
+    {
       header: 'Approval Status',
       accessor: 'approvalStatus',
       render: (student) => (
@@ -253,7 +335,7 @@ const Students = () => {
               </Link>
             )}
 
-            {isPending && (
+            {(isPending || isRejected) && (
               <>
                 <Button
                   variant="primary"
@@ -266,6 +348,7 @@ const Students = () => {
                   variant="danger"
                   className="text-xs py-1 px-2"
                   onClick={() => openConfirm('reject', student)}
+                  disabled={isRejected}
                 >
                   Reject
                 </Button>
@@ -314,14 +397,14 @@ const Students = () => {
         );
       },
     },
-  ], [batchOptions, editValues, editingId, termOptions]);
+  ], [batchOptions, editValues, editingId, termOptions, selectedStudentIds, students]);
 
   return (
     <div className="space-y-6">
       <Card>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Students</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage approvals, terms, and batch assignments.</p>
+          <h1 className="page-title">Students</h1>
+          <p className="text-sm text-text-subtle mt-1">Manage approvals, terms, and batch assignments.</p>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-6">
@@ -330,8 +413,8 @@ const Students = () => {
               key={tab.value}
               className={`px-4 py-2 rounded-lg text-sm font-medium border ${
                 filters.approvalStatus === tab.value
-                  ? 'bg-primary-500 text-white border-primary-500'
-                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  ? 'bg-brand-600 text-white border-brand-600'
+                  : 'bg-white text-text-muted border-line-soft hover:bg-surface-muted'
               }`}
               onClick={() => setFilters((prev) => ({ ...prev, approvalStatus: tab.value }))}
             >
@@ -393,6 +476,14 @@ const Students = () => {
           </Button>
         </div>
 
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button variant="outline" onClick={handleExportStudents}>Export CSV</Button>
+          <Button variant="secondary" onClick={() => handleBulkAction('approve')}>Bulk Approve</Button>
+          <Button variant="danger" onClick={() => handleBulkAction('reject')}>Bulk Reject</Button>
+          <Button variant="danger" onClick={() => handleBulkAction('block')}>Bulk Block</Button>
+          <Button variant="secondary" onClick={() => handleBulkAction('unblock')}>Bulk Unblock</Button>
+        </div>
+
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
             {error}
@@ -407,7 +498,7 @@ const Students = () => {
         />
 
         <div className="mt-4 flex items-center justify-between text-sm">
-          <p className="text-gray-600">
+          <p className="text-text-subtle">
             Showing page {pagination?.page || 1} of {pagination?.pages || 1}
             {' '}({pagination?.total || 0} students)
           </p>
@@ -453,6 +544,14 @@ const Students = () => {
             <span className="font-semibold">{confirmState.action}</span>{' '}
             {confirmState.student?.name ? `“${confirmState.student.name}”` : 'this student'}?
           </p>
+          {confirmState.action === 'reject' && (
+            <textarea
+              className="input-field min-h-24"
+              placeholder="Optional rejection reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+          )}
           {confirmState.action === 'save' && (
             <p className="text-sm text-gray-500">
               This will update the student’s term and batch assignment.
