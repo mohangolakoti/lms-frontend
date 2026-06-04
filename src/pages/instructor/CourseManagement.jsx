@@ -1,6 +1,7 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { instructorAPI } from '../../services/api';
+import CoursePlayer from '../../components/CoursePlayer';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Badge from '../../components/Badge';
@@ -10,8 +11,20 @@ import Textarea from '../../components/Textarea';
 import Select from '../../components/Select';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
+const sortCourseModules = (courseData) => {
+  const sortedModules = (courseData.modules || []).sort((a, b) => a.order - b.order);
+  return {
+    ...courseData,
+    modules: sortedModules.map((module) => ({
+      ...module,
+      lessons: (module.lessons || []).sort((a, b) => a.order - b.order),
+    })),
+  };
+};
+
 const CourseManagement = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,21 +33,34 @@ const CourseManagement = () => {
   const [isEditingModule, setIsEditingModule] = useState(false);
   const [isEditingLesson, setIsEditingLesson] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
-  const [selectedLesson, setSelectedLesson] = useState(null);
   const [editingModuleId, setEditingModuleId] = useState(null);
   const [editingLessonId, setEditingLessonId] = useState(null);
-  const [moduleForm, setModuleForm] = useState({ title: '', order: 1 });
+  const [previewTarget, setPreviewTarget] = useState(null);
+  const [moduleForm, setModuleForm] = useState({ title: '' });
   const [lessonForm, setLessonForm] = useState({
     title: '',
     description: '',
     type: 'video',
     url: '',
     durationSeconds: 0,
-    order: 1,
   });
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
 
+  const fetchCourse = async () => {
+    try {
+      setLoading(true);
+      const response = await instructorAPI.getCourse(id);
+      if (response.data.success) {
+        setCourse(sortCourseModules(response.data.data));
+      }
+    } catch (fetchError) {
+      setError(fetchError.response?.data?.error || 'Failed to fetch course');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchCourse();
@@ -50,113 +76,65 @@ const CourseManagement = () => {
     }
   }, [successMessage, errorMessage]);
 
-  const getAvailablePositions = (items) => {
-    if (!items || items.length === 0) return [1];
-    return Array.from({ length: items.length + 1 }, (_, i) => i + 1);
+  const instructorRole = course?.instructorRole || 'viewer';
+  const canEdit = instructorRole === 'editor';
+
+  const handleOpenPreview = (module, lesson) => {
+    setPreviewTarget({ module, lesson });
   };
 
-  const recalculateOrders = (items, newOrder, currentIndex) => {
-    const oldOrder = items[currentIndex].order;
-    const newItems = [...items];
-
-    if (newOrder > oldOrder) {
-      // Moving down - shift items up
-      for (let i = 0; i < newItems.length; i++) {
-        if (i === currentIndex) {
-          newItems[i].order = newOrder;
-        } else if (newItems[i].order > oldOrder && newItems[i].order <= newOrder) {
-          newItems[i].order -= 1;
-        }
-      }
-    } else if (newOrder < oldOrder) {
-      // Moving up - shift items down
-      for (let i = 0; i < newItems.length; i++) {
-        if (i === currentIndex) {
-          newItems[i].order = newOrder;
-        } else if (newItems[i].order >= newOrder && newItems[i].order < oldOrder) {
-          newItems[i].order += 1;
-        }
-      }
-    }
-
-    return newItems.sort((a, b) => a.order - b.order);
-  };
-
-  const fetchCourse = async () => {
-    try {
-      setLoading(true);
-      const response = await instructorAPI.getCourses();
-      if (response.data.success) {
-        const found = response.data.data.find(c => c._id === id);
-        if (found) {
-          // Ensure modules and lessons are sorted by order
-          const sortedModules = (found.modules || []).sort((a, b) => a.order - b.order);
-          const modulesSortedLessons = sortedModules.map(module => ({
-            ...module,
-            lessons: (module.lessons || []).sort((a, b) => a.order - b.order),
-          }));
-          setCourse({ ...found, modules: modulesSortedLessons });
-        } else {
-          setError('Course not found');
-        }
-      }
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to fetch course');
-    } finally {
-      setLoading(false);
-    }
+  const handleClosePreview = () => {
+    setPreviewTarget(null);
   };
 
   const handleAddModule = async () => {
     try {
-      // Calculate next order
       const nextOrder = (course.modules?.length || 0) + 1;
       await instructorAPI.addModule(id, { ...moduleForm, order: nextOrder });
       setShowModuleModal(false);
-      setModuleForm({ title: '', order: 1 });
+      setModuleForm({ title: '' });
       setSuccessMessage('Module added successfully');
       fetchCourse();
-    } catch (error) {
-      setErrorMessage(error.response?.data?.error || 'Failed to add module');
+    } catch (addError) {
+      setErrorMessage(addError.response?.data?.error || 'Failed to add module');
     }
   };
 
   const handleEditModule = async () => {
     try {
-      await instructorAPI.updateModule(id, editingModuleId, moduleForm);
+      await instructorAPI.updateModule(id, editingModuleId, { title: moduleForm.title });
       setShowModuleModal(false);
-      setModuleForm({ title: '', order: 1 });
+      setModuleForm({ title: '' });
       setEditingModuleId(null);
       setIsEditingModule(false);
       setSuccessMessage('Module updated successfully');
       fetchCourse();
-    } catch (error) {
-      setErrorMessage(error.response?.data?.error || 'Failed to update module');
+    } catch (editError) {
+      setErrorMessage(editError.response?.data?.error || 'Failed to update module');
     }
   };
 
   const handleOpenEditModule = (module) => {
     setEditingModuleId(module._id);
-    setModuleForm({ title: module.title, order: module.order });
+    setModuleForm({ title: module.title });
     setIsEditingModule(true);
     setShowModuleModal(true);
   };
 
   const handleAddLesson = async () => {
     try {
-      // Calculate next order if creating new lesson
       const nextOrder = (selectedModule.lessons?.length || 0) + 1;
       await instructorAPI.addLesson(id, selectedModule._id, {
         ...lessonForm,
         order: nextOrder,
       });
       setShowLessonModal(false);
-      setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0, order: 1 });
+      setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0 });
       setSelectedModule(null);
       setSuccessMessage('Lesson added successfully');
       fetchCourse();
-    } catch (error) {
-      setErrorMessage(error.response?.data?.error || 'Failed to add lesson');
+    } catch (addError) {
+      setErrorMessage(addError.response?.data?.error || 'Failed to add lesson');
     }
   };
 
@@ -164,14 +142,14 @@ const CourseManagement = () => {
     try {
       await instructorAPI.updateLesson(id, selectedModule._id, editingLessonId, lessonForm);
       setShowLessonModal(false);
-      setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0, order: 1 });
+      setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0 });
       setSelectedModule(null);
       setEditingLessonId(null);
       setIsEditingLesson(false);
       setSuccessMessage('Lesson updated successfully');
       fetchCourse();
-    } catch (error) {
-      setErrorMessage(error.response?.data?.error || 'Failed to update lesson');
+    } catch (editError) {
+      setErrorMessage(editError.response?.data?.error || 'Failed to update lesson');
     }
   };
 
@@ -180,37 +158,38 @@ const CourseManagement = () => {
     setEditingLessonId(lesson._id);
     setLessonForm({
       title: lesson.title,
-      description: lesson.description,
+      description: lesson.description || '',
       type: lesson.type,
       url: lesson.url,
-      durationSeconds: lesson.durationSeconds,
-      order: lesson.order,
+      durationSeconds: lesson.durationSeconds || 0,
     });
     setIsEditingLesson(true);
     setShowLessonModal(true);
   };
 
-  const handleDeleteModule = async (moduleId) => {
-    if (window.confirm('Are you sure you want to delete this module? All lessons will be deleted.')) {
-      try {
-        await instructorAPI.deleteModule(id, moduleId);
-        setSuccessMessage('Module deleted successfully');
-        fetchCourse();
-      } catch (error) {
-        setErrorMessage(error.response?.data?.error || 'Failed to delete module');
+  const executeDeleteModule = async (moduleId) => {
+    try {
+      await instructorAPI.deleteModule(id, moduleId);
+      if (previewTarget?.module?._id === moduleId) {
+        setPreviewTarget(null);
       }
+      setSuccessMessage('Module deleted successfully');
+      fetchCourse();
+    } catch (deleteError) {
+      setErrorMessage(deleteError.response?.data?.error || 'Failed to delete module');
     }
   };
 
-  const handleDeleteLesson = async (moduleId, lessonId) => {
-    if (window.confirm('Are you sure you want to delete this lesson?')) {
-      try {
-        await instructorAPI.deleteLesson(id, moduleId, lessonId);
-        setSuccessMessage('Lesson deleted successfully');
-        fetchCourse();
-      } catch (error) {
-        setErrorMessage(error.response?.data?.error || 'Failed to delete lesson');
+  const executeDeleteLesson = async (moduleId, lessonId) => {
+    try {
+      await instructorAPI.deleteLesson(id, moduleId, lessonId);
+      if (previewTarget?.lesson?._id === lessonId) {
+        setPreviewTarget(null);
       }
+      setSuccessMessage('Lesson deleted successfully');
+      fetchCourse();
+    } catch (deleteError) {
+      setErrorMessage(deleteError.response?.data?.error || 'Failed to delete lesson');
     }
   };
 
@@ -218,8 +197,8 @@ const CourseManagement = () => {
     try {
       await instructorAPI.updateCourse(id, { [field]: value });
       fetchCourse();
-    } catch (error) {
-      alert(error.response?.data?.error || 'Failed to update course');
+    } catch (updateError) {
+      setErrorMessage(updateError.response?.data?.error || 'Failed to update course');
     }
   };
 
@@ -254,6 +233,22 @@ const CourseManagement = () => {
     }
   };
 
+  const handleModalClose = () => {
+    if (showModuleModal) {
+      setShowModuleModal(false);
+      setModuleForm({ title: '' });
+      setEditingModuleId(null);
+      setIsEditingModule(false);
+    }
+    if (showLessonModal) {
+      setShowLessonModal(false);
+      setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0 });
+      setSelectedModule(null);
+      setEditingLessonId(null);
+      setIsEditingLesson(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -265,9 +260,9 @@ const CourseManagement = () => {
   if (error || !course) {
     return (
       <div className="space-y-6">
-        <Link to="/instructor/courses">
-          <Button variant="secondary">← Back to Courses</Button>
-        </Link>
+        <Button variant="secondary" onClick={() => navigate('/instructor/courses')}>
+          ← Back to Courses
+        </Button>
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error || 'Course not found'}
         </div>
@@ -275,61 +270,37 @@ const CourseManagement = () => {
     );
   }
 
-  const modalTitle = isEditingModule
-    ? 'Edit Module'
-    : isEditingLesson
-    ? 'Edit Lesson'
-    : showLessonModal
-    ? 'Add Lesson'
-    : 'Add Module';
-  const instructorRole = course?.instructorRole || 'viewer';
-  const canEdit = instructorRole === 'editor';
-
-  const handleModalClose = () => {
-    if (showModuleModal) {
-      setShowModuleModal(false);
-      setModuleForm({ title: '', order: 1 });
-      setEditingModuleId(null);
-      setIsEditingModule(false);
-    }
-    if (showLessonModal) {
-      setShowLessonModal(false);
-      setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0, order: 1 });
-      setSelectedModule(null);
-      setEditingLessonId(null);
-      setIsEditingLesson(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <Link to="/instructor/courses">
-        <Button variant="secondary">← Back to Courses</Button>
-      </Link>
+      <Button variant="secondary" onClick={() => navigate('/instructor/courses')}>
+        ← Back to Courses
+      </Button>
 
-      {/* Success Message */}
       {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg animate-in fade-in">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
           {successMessage}
         </div>
       )}
 
-      {/* Error Message */}
       {errorMessage && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg animate-in fade-in">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {errorMessage}
         </div>
       )}
 
-
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{course.title}</h1>
-            <p className="text-gray-600 mt-1">{course.description}</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Access: {instructorRole === 'editor' ? 'Editor' : 'Viewer'}
-            </p>
+            <h1 className="page-title">{course.title}</h1>
+            <p className="text-text-muted mt-1">{course.description}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant={instructorRole === 'editor' ? 'success' : 'info'}>
+                {instructorRole === 'editor' ? 'Editor Access' : 'Viewer Access'}
+              </Badge>
+              <Badge variant={course.visibility === 'published' ? 'success' : 'warning'}>
+                {course.visibility}
+              </Badge>
+            </div>
           </div>
           <div className="flex gap-2">
             {canEdit ? (
@@ -341,66 +312,49 @@ const CourseManagement = () => {
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
               </select>
-            ) : (
-              <Badge variant={course.visibility === 'published' ? 'success' : 'warning'}>
-                {course.visibility}
-              </Badge>
-            )}
+            ) : null}
           </div>
         </div>
       </Card>
 
       <Card
-        title="Modules & Lessons"
+        title="Course Content"
         action={canEdit ? (
-          <Button onClick={() => {
-            setShowModuleModal(true);
-            setIsEditingModule(false);
-            setEditingModuleId(null);
-            setModuleForm({ title: '', order: 1 });
-          }}>
+          <Button
+            className="text-xs py-1 px-2"
+            onClick={() => {
+              setShowModuleModal(true);
+              setIsEditingModule(false);
+              setEditingModuleId(null);
+              setModuleForm({ title: '' });
+            }}
+          >
             Add Module
           </Button>
         ) : null}
       >
-        {course.modules && course.modules.length > 0 ? (
-          <div className="space-y-4">
+        {course.modules?.length ? (
+          <div className="space-y-3">
             {course.modules.map((module, moduleIndex) => (
-              <div key={module._id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <h3 className="font-semibold text-gray-900">
-                        {module.order}. {module.title}
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        {module.lessons?.length || 0} lesson{(module.lessons?.length || 0) !== 1 ? 's' : ''}
-                      </span>
-                    </div>
+              <div key={module._id} className="border border-line-soft rounded-lg p-4">
+                <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+                  <div>
+                    <p className="font-semibold text-text-base">
+                      {module.order}. {module.title}
+                    </p>
+                    <p className="text-xs text-text-muted mt-1">
+                      {module.lessons?.length || 0} lesson{(module.lessons?.length || 0) !== 1 ? 's' : ''}
+                    </p>
                   </div>
                   {canEdit && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        className="text-xs py-1 px-2"
-                        onClick={() => handleOpenEditModule(module)}
-                      >
+                    <div className="flex flex-wrap gap-1">
+                      <Button variant="outline" className="text-xs py-1 px-2" onClick={() => handleOpenEditModule(module)}>
                         Edit
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="text-xs py-1 px-2"
-                        onClick={() => reorderModules(moduleIndex, moduleIndex - 1)}
-                        disabled={moduleIndex === 0}
-                      >
+                      <Button variant="outline" className="text-xs py-1 px-2" onClick={() => reorderModules(moduleIndex, moduleIndex - 1)} disabled={moduleIndex === 0}>
                         Up
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="text-xs py-1 px-2"
-                        onClick={() => reorderModules(moduleIndex, moduleIndex + 1)}
-                        disabled={moduleIndex === (course.modules.length - 1)}
-                      >
+                      <Button variant="outline" className="text-xs py-1 px-2" onClick={() => reorderModules(moduleIndex, moduleIndex + 1)} disabled={moduleIndex === course.modules.length - 1}>
                         Down
                       </Button>
                       <Button
@@ -411,156 +365,166 @@ const CourseManagement = () => {
                           setShowLessonModal(true);
                           setIsEditingLesson(false);
                           setEditingLessonId(null);
-                          setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0, order: 1 });
+                          setLessonForm({ title: '', description: '', type: 'video', url: '', durationSeconds: 0 });
                         }}
                       >
-                        Add Lesson
+                        + Lesson
                       </Button>
                       <Button
                         variant="danger"
                         className="text-xs py-1 px-2"
-                        onClick={() => handleDeleteModule(module._id)}
+                        onClick={() => setConfirmAction({
+                          title: 'Delete Module',
+                          message: 'Delete this module and all its lessons?',
+                          onConfirm: () => executeDeleteModule(module._id),
+                        })}
                       >
                         Delete
                       </Button>
                     </div>
                   )}
                 </div>
-                {module.lessons && module.lessons.length > 0 ? (
-                  <div className="space-y-2 ml-4">
-                    {module.lessons.map((lesson, lessonIndex) => (
-                      <div
-                        key={lesson._id}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition"
-                      >
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-sm text-gray-500 font-semibold w-6">{lesson.order}.</span>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-gray-900">{lesson.title}</span>
-                            <div className="flex gap-2 mt-1">
-                              <Badge variant="info">{lesson.type}</Badge>
-                              {lesson.durationSeconds > 0 && (
-                                <Badge variant="secondary">
-                                  {Math.floor(lesson.durationSeconds / 60)}m
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
+
+                <div className="space-y-2">
+                  {(module.lessons || []).map((lesson, lessonIndex) => (
+                    <div
+                      key={lesson._id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-line-soft bg-surface-subtle p-3 flex-wrap"
+                    >
+                      <div className="flex-1 min-w-[200px]">
+                        <span className="text-sm font-medium text-text-base">
+                          {lesson.order}. {lesson.title}
+                        </span>
+                        <div className="flex gap-1 mt-1">
+                          <Badge variant="info">{lesson.type}</Badge>
+                          {lesson.durationSeconds > 0 && (
+                            <Badge variant="secondary">{Math.floor(lesson.durationSeconds / 60)} min</Badge>
+                          )}
                         </div>
-                        <div className="flex gap-2">
-                          <a
-                            href={lesson.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Button
-                              variant="outline"
-                              className="text-xs py-1 px-2"
-                            >
-                              Open
-                            </Button>
-                          </a>
-                          {canEdit && (
-                            <>
-                            <Button
-                              variant="outline"
-                              className="text-xs py-1 px-2"
-                              onClick={() => handleOpenEditLesson(module, lesson)}
-                            >
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant="outline"
+                          className="text-xs py-1 px-2"
+                          onClick={() => handleOpenPreview(module, lesson)}
+                        >
+                          Preview
+                        </Button>
+                        {canEdit && (
+                          <>
+                            <Button variant="outline" className="text-xs py-1 px-2" onClick={() => handleOpenEditLesson(module, lesson)}>
                               Edit
                             </Button>
-                            <Button
-                              variant="outline"
-                              className="text-xs py-1 px-2"
-                              onClick={() => reorderLessons(module._id, lessonIndex, lessonIndex - 1)}
-                              disabled={lessonIndex === 0}
-                            >
+                            <Button variant="outline" className="text-xs py-1 px-2" onClick={() => reorderLessons(module._id, lessonIndex, lessonIndex - 1)} disabled={lessonIndex === 0}>
                               Up
                             </Button>
-                            <Button
-                              variant="outline"
-                              className="text-xs py-1 px-2"
-                              onClick={() => reorderLessons(module._id, lessonIndex, lessonIndex + 1)}
-                              disabled={lessonIndex === (module.lessons.length - 1)}
-                            >
+                            <Button variant="outline" className="text-xs py-1 px-2" onClick={() => reorderLessons(module._id, lessonIndex, lessonIndex + 1)} disabled={lessonIndex === (module.lessons.length - 1)}>
                               Down
                             </Button>
                             <Button
                               variant="danger"
                               className="text-xs py-1 px-2"
-                              onClick={() => handleDeleteLesson(module._id, lesson._id)}
+                              onClick={() => setConfirmAction({
+                                title: 'Delete Lesson',
+                                message: 'Delete this lesson permanently?',
+                                onConfirm: () => executeDeleteLesson(module._id, lesson._id),
+                              })}
                             >
                               Delete
                             </Button>
-                            </>
-                          )}
-                        </div>
+                          </>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 ml-4">No lessons yet</p>
-                )}
+                    </div>
+                  ))}
+                  {!module.lessons?.length && (
+                    <p className="text-xs text-text-muted px-1">No lessons yet</p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            <p>No modules yet. Add your first module to get started!</p>
+          <div className="text-center py-8 text-text-muted">
+            <p>{canEdit ? 'No modules yet. Add your first module to get started.' : 'This course has no content yet.'}</p>
           </div>
         )}
       </Card>
 
-      {/* Module Modal */}
+      <Modal
+        isOpen={!!previewTarget}
+        onClose={handleClosePreview}
+        title={previewTarget ? `Preview: ${previewTarget.lesson.title}` : 'Lesson Preview'}
+        size="xl"
+        footer={
+          <Button variant="secondary" onClick={handleClosePreview}>
+            Close Preview
+          </Button>
+        }
+      >
+        {previewTarget && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-text-muted">{previewTarget.module.title}</p>
+              <h2 className="text-xl font-semibold text-text-base">{previewTarget.lesson.title}</h2>
+              {previewTarget.lesson.description && (
+                <p className="text-sm text-text-muted mt-1">{previewTarget.lesson.description}</p>
+              )}
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="info">{previewTarget.lesson.type}</Badge>
+                {previewTarget.lesson.durationSeconds > 0 && (
+                  <Badge variant="secondary">{Math.floor(previewTarget.lesson.durationSeconds / 60)} min</Badge>
+                )}
+              </div>
+            </div>
+
+            <CoursePlayer lesson={previewTarget.lesson} courseId={id} mode="preview" />
+
+            {previewTarget.lesson.url && (
+              <div className="pt-2 border-t border-line-soft">
+                <a
+                  href={previewTarget.lesson.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-brand-700 hover:text-brand-800 underline"
+                >
+                  Open in new tab (fallback)
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
       <Modal
         isOpen={showModuleModal}
         onClose={handleModalClose}
         title={isEditingModule ? 'Edit Module' : 'Add Module'}
         footer={
           <>
-            <Button variant="secondary" onClick={handleModalClose}>
-              Cancel
-            </Button>
+            <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
             <Button onClick={isEditingModule ? handleEditModule : handleAddModule}>
               {isEditingModule ? 'Save Changes' : 'Add Module'}
             </Button>
           </>
         }
       >
-        <div className="space-y-4">
-          <Input
-            label="Module Title"
-            name="title"
-            value={moduleForm.title}
-            onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
-            required
-          />
-          {isEditingModule && course.modules && (
-            <Select
-              label="Position"
-              name="order"
-              value={moduleForm.order}
-              onChange={(e) => setModuleForm({ ...moduleForm, order: parseInt(e.target.value) })}
-              options={getAvailablePositions(course.modules).map(pos => ({
-                value: pos,
-                label: `Position ${pos}`,
-              }))}
-              required
-            />
-          )}
-        </div>
+        <Input
+          label="Module Title"
+          name="title"
+          value={moduleForm.title}
+          onChange={(e) => setModuleForm({ title: e.target.value })}
+          required
+        />
       </Modal>
 
-      {/* Lesson Modal */}
       <Modal
         isOpen={showLessonModal}
         onClose={handleModalClose}
         title={isEditingLesson ? 'Edit Lesson' : 'Add Lesson'}
         footer={
           <>
-            <Button variant="secondary" onClick={handleModalClose}>
-              Cancel
-            </Button>
+            <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
             <Button onClick={isEditingLesson ? handleEditLesson : handleAddLesson}>
               {isEditingLesson ? 'Save Changes' : 'Add Lesson'}
             </Button>
@@ -568,19 +532,8 @@ const CourseManagement = () => {
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Lesson Title"
-            name="title"
-            value={lessonForm.title}
-            onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
-            required
-          />
-          <Textarea
-            label="Description"
-            name="description"
-            value={lessonForm.description}
-            onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })}
-          />
+          <Input label="Lesson Title" name="title" value={lessonForm.title} onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })} required />
+          <Textarea label="Description" name="description" value={lessonForm.description} onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })} />
           <Select
             label="Type"
             name="type"
@@ -593,41 +546,36 @@ const CourseManagement = () => {
             ]}
             required
           />
-          <Input
-            label="URL"
-            name="url"
-            value={lessonForm.url}
-            onChange={(e) => setLessonForm({ ...lessonForm, url: e.target.value })}
-            placeholder="https://example.com/video.mp4"
-            required
-          />
+          <Input label="URL" name="url" value={lessonForm.url} onChange={(e) => setLessonForm({ ...lessonForm, url: e.target.value })} placeholder="https://example.com/video.mp4" required />
           {lessonForm.type === 'video' && (
-            <Input
-              label="Duration (seconds)"
-              name="durationSeconds"
-              type="number"
-              value={lessonForm.durationSeconds}
-              onChange={(e) => setLessonForm({ ...lessonForm, durationSeconds: parseInt(e.target.value) || 0 })}
-            />
-          )}
-          {isEditingLesson && selectedModule && selectedModule.lessons && (
-            <Select
-              label="Position"
-              name="order"
-              value={lessonForm.order}
-              onChange={(e) => setLessonForm({ ...lessonForm, order: parseInt(e.target.value) })}
-              options={getAvailablePositions(selectedModule.lessons).map(pos => ({
-                value: pos,
-                label: `Position ${pos}`,
-              }))}
-              required
-            />
+            <Input label="Duration (seconds)" name="durationSeconds" type="number" value={lessonForm.durationSeconds} onChange={(e) => setLessonForm({ ...lessonForm, durationSeconds: parseInt(e.target.value, 10) || 0 })} />
           )}
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        title={confirmAction?.title || 'Confirm'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button
+              variant="danger"
+              onClick={async () => {
+                await confirmAction?.onConfirm?.();
+                setConfirmAction(null);
+              }}
+            >
+              Confirm
+            </Button>
+          </>
+        }
+      >
+        <p className="text-text-base">{confirmAction?.message}</p>
       </Modal>
     </div>
   );
 };
 
 export default CourseManagement;
-

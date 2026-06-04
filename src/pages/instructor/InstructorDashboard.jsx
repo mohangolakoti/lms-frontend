@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { instructorAPI } from '../../services/api';
 import StatCard from '../../components/StatCard';
 import Card from '../../components/Card';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Button from '../../components/Button';
+import Badge from '../../components/Badge';
 
 const InstructorDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,9 +25,9 @@ const InstructorDashboard = () => {
       if (response.data.success) {
         setStats(response.data.data);
       }
-    } catch (error) {
+    } catch (fetchError) {
       setError('Failed to load dashboard data');
-      console.error('Dashboard error:', error);
+      console.error('Dashboard error:', fetchError);
     } finally {
       setLoading(false);
     }
@@ -35,10 +37,10 @@ const InstructorDashboard = () => {
     try {
       const response = await instructorAPI.getCourses();
       if (response.data.success) {
-        setCourses(response.data.data.slice(0, 5)); // Show latest 5 courses
+        setCourses(response.data.data.slice(0, 5));
       }
-    } catch (error) {
-      console.error('Courses error:', error);
+    } catch (fetchError) {
+      console.error('Courses error:', fetchError);
     }
   };
 
@@ -60,89 +62,75 @@ const InstructorDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-6 text-white shadow-card">
         <h1 className="text-3xl font-semibold mb-2">Welcome Back, Instructor!</h1>
-        <p className="text-brand-100">Ready to continue teaching? You're making great progress!</p>
+        <p className="text-brand-100">Review courses, track learner progress, and manage assessments from one place.</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Courses"
-          value={stats?.courses?.totalCourses || 0}
-          icon={<span className="text-2xl">📚</span>}
-          color="blue"
-        />
-        <StatCard
-          title="Published Courses"
-          value={stats?.courses?.publishedCourses || 0}
-          icon={<span className="text-2xl">📖</span>}
-          color="green"
-        />
-        <StatCard
-          title="Draft Courses"
-          value={stats?.courses?.draftCourses || 0}
-          icon={<span className="text-2xl">📝</span>}
-          color="yellow"
-        />
-        <StatCard
-          title="Total Students"
-          value={stats?.students?.totalStudents || 0}
-          icon={<span className="text-2xl">👥</span>}
-          color="purple"
-        />
+        <StatCard title="Total Courses" value={stats?.courses?.totalCourses || 0} icon={<span className="text-2xl">📚</span>} color="blue" />
+        <StatCard title="Published Courses" value={stats?.courses?.publishedCourses || 0} icon={<span className="text-2xl">📖</span>} color="green" />
+        <StatCard title="Draft Assessments" value={stats?.assessments?.draftAssessments || 0} icon={<span className="text-2xl">📝</span>} color="yellow" />
+        <StatCard title="At-Risk Students" value={stats?.students?.atRiskStudents || 0} icon={<span className="text-2xl">⚠️</span>} color="purple" />
       </div>
 
-      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <p className="text-sm text-text-muted">Total Submissions</p>
+          <p className="text-2xl font-semibold text-text-base">{stats?.assessments?.totalSubmissions || 0}</p>
+          <Button variant="outline" className="mt-3 w-full" onClick={() => navigate('/instructor/assessments')}>
+            Review Assessments
+          </Button>
+        </Card>
+        <Card>
+          <p className="text-sm text-text-muted">Enrolled Learners (tracked)</p>
+          <p className="text-2xl font-semibold text-text-base">{stats?.students?.totalStudents || 0}</p>
+          <Button variant="outline" className="mt-3 w-full" onClick={() => navigate('/instructor/progress')}>
+            View Progress
+          </Button>
+        </Card>
+        <Card>
+          <p className="text-sm text-text-muted">Completed Learners</p>
+          <p className="text-2xl font-semibold text-text-base">{stats?.students?.completedStudents || 0}</p>
+          <Button variant="outline" className="mt-3 w-full" onClick={() => navigate('/instructor/courses')}>
+            Open Courses
+          </Button>
+        </Card>
+      </div>
+
       <Card title="Quick Actions">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Link to="/instructor/courses">
-            <Button className="w-full">My Courses</Button>
-          </Link>
-          <Link to="/instructor/assessments">
-            <Button className="w-full">Manage Assessments</Button>
-          </Link>
-          <Link to="/instructor/progress">
-            <Button className="w-full">View Student Progress</Button>
-          </Link>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Button className="w-full" onClick={() => navigate('/instructor/courses')}>My Courses</Button>
+          <Button className="w-full" onClick={() => navigate('/instructor/assessments')}>Manage Assessments</Button>
+          <Button className="w-full" onClick={() => navigate('/instructor/progress')}>View Student Progress</Button>
         </div>
       </Card>
 
-      {/* My Courses */}
-      <Card title="My Courses" action={<Link to="/instructor/courses"><Button variant="outline">View All</Button></Link>}>
+      <Card
+        title="My Courses"
+        action={<Button variant="outline" onClick={() => navigate('/instructor/courses')}>View All</Button>}
+      >
         {courses.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p className="mb-4">No courses yet. Create your first course to get started!</p>
-            <Link to="/instructor/courses">
-              <Button>Create Course</Button>
-            </Link>
+          <div className="text-center py-8 text-text-muted">
+            <p>No courses assigned yet. Contact an administrator to get course access.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {courses.map((course) => (
-              <div
-                key={course._id}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-              >
+              <div key={course._id} className="flex items-center justify-between p-4 border border-line-soft rounded-lg hover:shadow-md transition-shadow">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">{course.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{course.description}</p>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      course.visibility === 'published' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {course.visibility}
-                    </span>
-                    <span className="text-xs text-gray-500">{course.level}</span>
-                    <span className="text-xs text-gray-500">{course.term}</span>
+                  <h3 className="font-semibold text-text-base">{course.title}</h3>
+                  <p className="text-sm text-text-muted mt-1">{course.description}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant={course.visibility === 'published' ? 'success' : 'warning'}>{course.visibility}</Badge>
+                    <Badge variant={course.instructorRole === 'editor' ? 'success' : 'info'}>
+                      {course.instructorRole === 'editor' ? 'Editor' : 'Viewer'}
+                    </Badge>
                   </div>
                 </div>
-                <Link to={`/instructor/courses/${course._id}`}>
-                  <Button variant="outline">View Course →</Button>
-                </Link>
+                <Button variant="outline" onClick={() => navigate(`/instructor/courses/${course._id}`)}>
+                  {course.instructorRole === 'editor' ? 'Manage →' : 'Review →'}
+                </Button>
               </div>
             ))}
           </div>
@@ -153,4 +141,3 @@ const InstructorDashboard = () => {
 };
 
 export default InstructorDashboard;
-

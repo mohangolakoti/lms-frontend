@@ -17,8 +17,8 @@ export const useStudentAssessments = () => {
       if (response.data.success) {
         setAssessments(response.data.data);
       }
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to fetch assessments');
+    } catch (fetchError) {
+      setError(fetchError.response?.data?.error || 'Failed to fetch assessments');
     } finally {
       setLoading(false);
     }
@@ -27,24 +27,24 @@ export const useStudentAssessments = () => {
   return { assessments, loading, error, refetch: fetchAssessments };
 };
 
-export const useInstructorAssessments = () => {
+export const useInstructorAssessments = (filters = {}) => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchAssessments();
-  }, []);
+  }, [filters.courseId, filters.visibility]);
 
   const fetchAssessments = async () => {
     try {
       setLoading(true);
-      const response = await instructorAPI.getAssessments();
+      const response = await instructorAPI.getAssessments(filters);
       if (response.data.success) {
         setAssessments(response.data.data);
       }
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to fetch assessments');
+    } catch (fetchError) {
+      setError(fetchError.response?.data?.error || 'Failed to fetch assessments');
     } finally {
       setLoading(false);
     }
@@ -52,4 +52,3 @@ export const useInstructorAssessments = () => {
 
   return { assessments, loading, error, refetch: fetchAssessments };
 };
-

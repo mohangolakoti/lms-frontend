@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useInstructorCourses } from '../../hooks/useCourses';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -6,6 +6,7 @@ import Badge from '../../components/Badge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const Courses = () => {
+  const navigate = useNavigate();
   const { courses, loading, error } = useInstructorCourses();
 
   if (loading) {
@@ -37,32 +38,40 @@ const Courses = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <Card key={course._id} className="hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">📚</span>
+          {courses.map((course) => {
+            const isEditor = course.instructorRole === 'editor';
+            return (
+              <Card key={course._id} className="hover:shadow-lg transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center">
+                    <span className="text-2xl">📚</span>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={course.visibility === 'published' ? 'success' : 'warning'}>
+                      {course.visibility}
+                    </Badge>
+                    <Badge variant={isEditor ? 'success' : 'info'}>
+                      {isEditor ? 'Editor' : 'Viewer'}
+                    </Badge>
+                  </div>
                 </div>
-                <Badge variant={course.visibility === 'published' ? 'success' : 'warning'}>
-                  {course.visibility}
-                </Badge>
-              </div>
-              <h3 className="text-lg font-semibold text-text-base mb-2">{course.title}</h3>
-              <p className="text-sm text-text-muted mb-4 line-clamp-2">{course.description}</p>
-              <div className="flex items-center justify-between mb-4">
-                <Badge variant={course.level === 'Beginner' ? 'success' : course.level === 'Intermediate' ? 'warning' : 'danger'}>
-                  {course.level}
-                </Badge>
-                <Badge variant="primary">{course.term}</Badge>
-              </div>
-              <div className="mb-4 text-sm text-text-subtle">
-                <p>{course.modules?.length || 0} Modules</p>
-              </div>
-              <Link to={`/instructor/courses/${course._id}`}>
-                <Button className="w-full">Manage Course →</Button>
-              </Link>
-            </Card>
-          ))}
+                <h3 className="text-lg font-semibold text-text-base mb-2">{course.title}</h3>
+                <p className="text-sm text-text-muted mb-4 line-clamp-2">{course.description}</p>
+                <div className="flex items-center justify-between mb-4">
+                  <Badge variant={course.level === 'Beginner' ? 'success' : course.level === 'Intermediate' ? 'warning' : 'danger'}>
+                    {course.level}
+                  </Badge>
+                  <Badge variant="primary">{course.term}</Badge>
+                </div>
+                <div className="mb-4 text-sm text-text-subtle">
+                  <p>{course.modules?.length || 0} Modules</p>
+                </div>
+                <Button className="w-full" onClick={() => navigate(`/instructor/courses/${course._id}`)}>
+                  {isEditor ? 'Manage Course →' : 'Review Course →'}
+                </Button>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
@@ -70,4 +79,3 @@ const Courses = () => {
 };
 
 export default Courses;
-

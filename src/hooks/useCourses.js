@@ -106,12 +106,7 @@ export const useCourseDetails = (courseId, role = 'student') => {
       if (role === 'student') {
         response = await studentAPI.getCourseDetails(courseId);
       } else {
-        // For instructor/admin, we can use instructor API
-        response = await instructorAPI.getCourses();
-        const found = response.data.data.find(c => c._id === courseId);
-        if (found) {
-          response.data.data = found;
-        }
+        response = await instructorAPI.getCourse(courseId);
       }
       if (response.data.success) {
         setCourse(response.data.data.course || response.data.data);

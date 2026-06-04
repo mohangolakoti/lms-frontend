@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { instructorAPI } from '../../services/api';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -8,6 +8,7 @@ import StatCard from '../../components/StatCard';
 
 const AssessmentAnalytics = () => {
   const { assessmentId } = useParams();
+  const navigate = useNavigate();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,9 +41,9 @@ const AssessmentAnalytics = () => {
   if (error || !analytics) {
     return (
       <div className="space-y-4">
-        <Link to="/instructor/assessments">
-          <Button variant="outline">← Back to Assessments</Button>
-        </Link>
+        <Button variant="outline" onClick={() => navigate('/instructor/assessments')}>
+          ← Back to Assessments
+        </Button>
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error || 'Analytics not found'}
         </div>
@@ -54,9 +55,14 @@ const AssessmentAnalytics = () => {
 
   return (
     <div className="space-y-6">
-      <Link to="/instructor/assessments">
-        <Button variant="outline">← Back to Assessments</Button>
-      </Link>
+      <div className="flex gap-2 flex-wrap">
+        <Button variant="outline" onClick={() => navigate('/instructor/assessments')}>
+          ← Back to Assessments
+        </Button>
+        <Button variant="secondary" onClick={() => navigate(`/instructor/assessments/${assessmentId}/submissions`)}>
+          View Submissions
+        </Button>
+      </div>
 
       <Card>
         <h1 className="text-2xl font-bold text-gray-900">{assessment.title}</h1>
@@ -67,7 +73,11 @@ const AssessmentAnalytics = () => {
         <StatCard title="Attempts" value={totals.totalAttempts || 0} color="blue" />
         <StatCard title="Pass Rate" value={`${(totals.passRate || 0).toFixed(1)}%`} color="green" />
         <StatCard title="Avg Score" value={`${(totals.averageScore || 0).toFixed(1)}%`} color="purple" />
-        <StatCard title="Avg Time" value={`${Math.round(totals.averageTimeTaken || 0)} min`} color="yellow" />
+        <StatCard
+          title="Avg Time"
+          value={`${Math.round(totals.averageTimeTakenMinutes || 0)} min`}
+          color="yellow"
+        />
       </div>
 
       <Card title="Pass / Fail Breakdown">

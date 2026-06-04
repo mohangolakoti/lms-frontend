@@ -71,8 +71,9 @@ const getVideoSource = (url) => {
   return { type: VIDEO_SOURCE_TYPES.UNSUPPORTED };
 };
 
-const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
+const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) => {
   const { user } = useAuth();
+  const isPreview = mode === 'preview';
   const videoRef = useRef(null);
   const [lastWatchedSecond, setLastWatchedSecond] = useState(0);
   const [completed, setCompleted] = useState(lesson.completed || false);
@@ -96,7 +97,9 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
   }, [lesson._id, lesson.lastWatchedSecond, lesson.completed]);
 
   useEffect(() => {
-    if (lesson.type === 'video' && videoSource.type === VIDEO_SOURCE_TYPES.DIRECT && videoRef.current) {
+    if (isPreview || lesson.type !== 'video' || videoSource.type !== VIDEO_SOURCE_TYPES.DIRECT || !videoRef.current) {
+      return undefined;
+    }
       // Resume from last watched position
       if (lesson.lastWatchedSecond) {
         videoRef.current.currentTime = lesson.lastWatchedSecond;
@@ -150,8 +153,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
           videoRef.current.removeEventListener('ended', handleEnded);
         }
       };
-    }
-  }, [lesson, courseId, lastWatchedSecond, completed, onProgressUpdate, videoSource.type]);
+  }, [lesson, courseId, lastWatchedSecond, completed, onProgressUpdate, videoSource.type, isPreview]);
 
   const handleMarkComplete = async () => {
     try {
@@ -241,7 +243,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
               </div>
             )}
           </div>
-          <Watermark user={user} />
+          <Watermark user={user} preview={isPreview} />
         </div>
       );
     } else if (lesson.type === 'pdf') {
@@ -261,7 +263,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
               return false;
             }}
           />
-          <Watermark user={user} />
+          <Watermark user={user} preview={isPreview} />
         </div>
       );
     } else if (lesson.type === 'quiz') {
@@ -299,6 +301,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
       }}
     >
       {renderContent()}
+      {!isPreview && (
       <div className="mt-4 flex items-center justify-between" style={{ userSelect: 'none' }}>
         <div>
           {completed && (
@@ -317,14 +320,16 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate }) => {
           </button>
         )}
       </div>
+      )}
     </div>
   );
 };
 
-const Watermark = ({ user }) => {
+const Watermark = ({ user, preview = false }) => {
   if (!user) return null;
 
   const watermarkText = user.email || user.id || 'LMS';
+  const opacity = preview ? 0.1 : 0.2;
 
   return (
     <>
@@ -333,7 +338,7 @@ const Watermark = ({ user }) => {
         className="absolute inset-0 pointer-events-none flex items-center justify-center"
         style={{
           zIndex: 9999,
-          opacity: 0.2,
+          opacity,
           userSelect: 'none',
           WebkitUserSelect: 'none',
         }}

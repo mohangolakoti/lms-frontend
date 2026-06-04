@@ -186,6 +186,7 @@ export const adminAPI = {
 export const instructorAPI = {
   getDashboard: () => api.get('/instructors/dashboard'),
   getCourses: () => api.get('/instructors/courses'),
+  getCourse: (courseId) => api.get(`/instructors/courses/${courseId}`),
   createCourse: (data) => api.post('/instructors/courses', data),
   updateCourse: (id, data) => api.put(`/instructors/courses/${id}`, data),
   addModule: (courseId, data) => api.post(`/instructors/courses/${courseId}/modules`, data),
@@ -204,9 +205,14 @@ export const instructorAPI = {
   reorderLessons: (courseId, moduleId, lessonOrder) =>
     api.put(`/instructors/courses/${courseId}/modules/${moduleId}/lessons/reorder`, { lessonOrder }),
   createAssessment: (data) => api.post('/instructors/assessments', data),
-  getAssessments: () => api.get('/instructors/assessments'),
+  updateAssessment: (assessmentId, data) => api.put(`/instructors/assessments/${assessmentId}`, data),
+  deleteAssessment: (assessmentId) => api.delete(`/instructors/assessments/${assessmentId}`),
+  duplicateAssessment: (assessmentId) => api.post(`/instructors/assessments/${assessmentId}/duplicate`),
+  getAssessments: (params) => api.get('/instructors/assessments', { params }),
   getAssessmentAnalytics: (assessmentId) => api.get(`/instructors/assessments/${assessmentId}/analytics`),
-  getCourseProgress: (courseId) => api.get(`/instructors/courses/${courseId}/progress`),
+  getCourseProgress: (courseId, params) => api.get(`/instructors/courses/${courseId}/progress`, { params }),
+  exportCourseProgress: (courseId, params) =>
+    api.get(`/instructors/courses/${courseId}/progress/export`, { params, responseType: 'blob' }),
   getSubmissions: (assessmentId) => api.get(`/instructors/assessments/${assessmentId}/submissions`),
   gradeSubmission: (submissionId, data) => 
     api.put(`/instructors/submissions/${submissionId}/grade`, data),
