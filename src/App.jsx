@@ -45,6 +45,7 @@ import AssessmentView from './pages/student/AssessmentView';
 import StudentAnnouncements from './pages/student/Announcements';
 import Notifications from './pages/student/Notifications';
 import StudentCertificates from './pages/student/Certificates';
+import StudentProfile from './pages/student/Profile';
 import StudentSessions from './pages/student/Sessions';
 
 // Redirect component for authenticated users
@@ -143,6 +144,7 @@ function App() {
                     <Route path="assessments/:id" element={<AssessmentView />} />
                     <Route path="announcements" element={<StudentAnnouncements />} />
                     <Route path="notifications" element={<Notifications />} />
+                    <Route path="profile" element={<StudentProfile />} />
                     <Route path="sessions" element={<StudentSessions />} />
                     <Route path="certificates" element={<StudentCertificates />} />
                     <Route path="*" element={<Navigate to="/student/dashboard" replace />} />

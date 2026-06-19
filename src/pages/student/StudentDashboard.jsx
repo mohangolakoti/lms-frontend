@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { studentAPI } from '../../services/api';
 import StatCard from '../../components/StatCard';
 import Card from '../../components/Card';
@@ -7,14 +7,15 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import Button from '../../components/Button';
 import Badge from '../../components/Badge';
 import { useAuth } from '../../context/AuthContext';
+import formatDuration from '../../utils/formatDuration';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
-  const [announcements, setAnnouncements] = useState([]);
+  const [learningPath, setLearningPath] = useState(null);
   const [assignedCourses, setAssignedCourses] = useState([]);
   const [certificates, setCertificates] = useState([]);
-  const [recommendedLesson, setRecommendedLesson] = useState(null);
   const [certificatesLoading, setCertificatesLoading] = useState(false);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,7 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     fetchDashboard();
-    fetchAnnouncements();
+    fetchLearningPath();
     fetchAssignedCourses();
     fetchCertificates();
   }, []);
@@ -33,78 +34,36 @@ const StudentDashboard = () => {
       if (response.data.success) {
         setDashboardData(response.data.data);
       }
-    } catch (error) {
+    } catch (err) {
       setError('Failed to load dashboard data');
-      console.error('Dashboard error:', error);
+      console.error('Dashboard error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAnnouncements = async () => {
+  const fetchLearningPath = async () => {
     try {
-      const response = await studentAPI.getAnnouncements();
+      const response = await studentAPI.getLearningPath();
       if (response.data.success) {
-        setAnnouncements(response.data.data.slice(0, 5)); // Show latest 5
+        setLearningPath(response.data.data);
       }
-    } catch (error) {
-      console.error('Announcements error:', error);
+    } catch (err) {
+      console.error('Learning path error:', err);
     }
   };
 
   const fetchAssignedCourses = async () => {
     try {
       setCoursesLoading(true);
-      const response = await studentAPI.getCourses();
+      const response = await studentAPI.getCourses({ page: 1, limit: 12 });
       if (response.data.success) {
-        const payload = response?.data?.data;
-        const items = Array.isArray(payload) ? payload : (payload?.data || []);
-        setAssignedCourses(items);
-        await buildRecommendedLesson(items);
+        setAssignedCourses(response.data.data || []);
       }
-    } catch (error) {
-      console.error('Assigned courses error:', error);
+    } catch (err) {
+      console.error('Assigned courses error:', err);
     } finally {
       setCoursesLoading(false);
-    }
-  };
-
-  const buildRecommendedLesson = async (courses) => {
-    try {
-      const rankedCourses = (courses || [])
-        .filter((course) => !course.completed)
-        .sort((a, b) => (a.progress || 0) - (b.progress || 0))
-        .slice(0, 3);
-
-      for (const course of rankedCourses) {
-        const courseId = course._id || course.courseId;
-        if (!courseId) continue;
-        const detailsResponse = await studentAPI.getCourseDetails(courseId);
-        const detailCourse = detailsResponse?.data?.data?.course;
-        if (!detailCourse?.modules?.length) continue;
-
-        const orderedModules = [...detailCourse.modules].sort((a, b) => a.order - b.order);
-        for (const module of orderedModules) {
-          const orderedLessons = [...(module.lessons || [])].sort((a, b) => a.order - b.order);
-          const nextLesson = orderedLessons.find((lesson) => !lesson.completed);
-          if (nextLesson) {
-            setRecommendedLesson({
-              courseId,
-              courseTitle: detailCourse.title,
-              moduleTitle: module.title,
-              lessonId: nextLesson._id,
-              lessonTitle: nextLesson.title,
-              progress: course.progress || 0,
-            });
-            return;
-          }
-        }
-      }
-
-      setRecommendedLesson(null);
-    } catch (recommendationError) {
-      console.error('Recommendation error:', recommendationError);
-      setRecommendedLesson(null);
     }
   };
 
@@ -115,8 +74,8 @@ const StudentDashboard = () => {
       if (response.data.success) {
         setCertificates(response.data.data || []);
       }
-    } catch (error) {
-      console.error('Certificates error:', error);
+    } catch (err) {
+      console.error('Certificates error:', err);
     } finally {
       setCertificatesLoading(false);
     }
@@ -139,142 +98,120 @@ const StudentDashboard = () => {
   }
 
   const metrics = dashboardData?.metrics || {};
+  const continueLesson = learningPath?.continueLesson;
+  const upcomingAssessments = learningPath?.upcomingAssessments || [];
+  const recentAnnouncements = learningPath?.recentAnnouncements || [];
+  const timeSeconds = metrics.totalTimeSpentSeconds ?? metrics.totalTimeSpent ?? 0;
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-6 text-white shadow-card">
         <h1 className="text-3xl font-semibold mb-2">Welcome Back, {user?.name || 'Student'}!</h1>
-        <p className="text-brand-100">Ready to continue your learning journey? You're making great progress!</p>
+        <p className="text-brand-100">Pick up where you left off and keep your learning momentum going.</p>
+        {continueLesson && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button onClick={() => navigate(`/student/courses/${continueLesson.courseId}/lessons/${continueLesson.lessonId}`)}>
+              Resume: {continueLesson.lessonTitle}
+            </Button>
+            <span className="text-sm text-brand-100">
+              {continueLesson.courseTitle} • {Math.round(continueLesson.progress || 0)}% complete
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Assessment Activity Stats */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Assessment Activity</h2>
+        <h2 className="text-xl font-semibold text-text-base mb-4">Learning Progress</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            title="Tests Assigned"
-            value={metrics.totalAssessments || 0}
-            icon={<span className="text-2xl">📄</span>}
+            title="Courses"
+            value={`${metrics.completedCourses || 0}/${metrics.totalCourses || 0}`}
+            icon={<span className="text-2xl">📚</span>}
             color="blue"
           />
           <StatCard
-            title="Tests Completed"
-            value={metrics.completedAssessments || 0}
-            icon={<span className="text-2xl">✅</span>}
+            title="Modules Completed"
+            value={`${metrics.completedModules || 0}/${metrics.totalModules || 0}`}
+            icon={<span className="text-2xl">📖</span>}
             color="green"
           />
           <StatCard
-            title="Questions Attempted"
-            value={metrics.totalQuestionsAttempted || 0}
-            icon={<span className="text-2xl">❓</span>}
-            color="purple"
-          />
-          <StatCard
-            title="Total Time Spent"
-            value={`${Math.floor((metrics.totalTimeSpent || 0) / 60)}h ${(metrics.totalTimeSpent || 0) % 60}m`}
+            title="Time Spent Learning"
+            value={formatDuration(timeSeconds)}
             icon={<span className="text-2xl">⏱️</span>}
             color="yellow"
+          />
+          <StatCard
+            title="Assessments Done"
+            value={`${metrics.completedAssessments || 0}/${metrics.totalAssessments || 0}`}
+            icon={<span className="text-2xl">📝</span>}
+            color="purple"
           />
         </div>
       </div>
 
-      {/* Learning Paths / Courses */}
-      <Card title="Learning Paths" action={<Link to="/student/courses"><Button variant="outline">View All</Button></Link>}>
+      <Card
+        title="My Courses"
+        action={<Button variant="outline" onClick={() => navigate('/student/courses')}>View All</Button>}
+      >
         {coursesLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <LoadingSpinner size="md" />
-          </div>
+          <div className="flex items-center justify-center py-8"><LoadingSpinner size="md" /></div>
         ) : assignedCourses.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>No courses assigned yet. Check back later!</p>
-          </div>
+          <div className="text-center py-8 text-text-subtle">No courses assigned yet.</div>
         ) : (
           <div className="space-y-4">
-            {assignedCourses.slice(0, 3).map((course) => {
-              const courseId = course._id || course.courseId;
-              const batchNames = (course.batches || [])
-                .map((b) => b?.name)
-                .filter(Boolean);
-              const batchLabel = batchNames.length > 0 ? batchNames.join(', ') : 'N/A';
-
-              return (
-                <div
-                  key={courseId}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 bg-brand-100 rounded-lg flex items-center justify-center">
-                      <span className="text-2xl">📚</span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{course.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1">Instructor: {course.instructorId?.name || course.instructor || 'N/A'}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            course.completed 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}
-                        >
-                          {course.completed ? 'Completed' : `${Math.round(course.progress || 0)}% Complete`}
-                        </span>
-                        <span className="text-xs text-gray-500">{course.level}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <Link to={`/student/courses/${courseId}`}>
-                    <Button variant="primary">Continue Learning →</Button>
-                  </Link>
+            {assignedCourses.slice(0, 3).map((course) => (
+              <div key={course._id} className="flex items-center justify-between p-4 border border-line-soft rounded-lg">
+                <div>
+                  <h3 className="font-semibold text-text-base">{course.title}</h3>
+                  <p className="text-sm text-text-muted">{course.instructorId?.name || 'Instructor'}</p>
+                  <Badge variant={course.completed ? 'success' : 'primary'} className="mt-2">
+                    {course.completed ? 'Completed' : `${Math.round(course.progress || 0)}%`}
+                  </Badge>
                 </div>
-              );
-            })}
+                <Button onClick={() => navigate(`/student/courses/${course._id}`)}>Continue →</Button>
+              </div>
+            ))}
           </div>
         )}
       </Card>
 
-      <Card title="Recommended Next Lesson">
-        {recommendedLesson ? (
-          <div className="flex items-center justify-between p-4 border border-brand-200 bg-brand-50 rounded-lg">
-            <div>
-              <p className="font-semibold text-gray-900">{recommendedLesson.lessonTitle}</p>
-              <p className="text-sm text-gray-600">
-                {recommendedLesson.courseTitle} • {recommendedLesson.moduleTitle}
-              </p>
-              <p className="text-xs text-brand-700 mt-1">
-                Current course progress: {Math.round(recommendedLesson.progress)}%
-              </p>
-            </div>
-            <Link to={`/student/courses/${recommendedLesson.courseId}/lessons/${recommendedLesson.lessonId}`}>
-              <Button>Resume Now</Button>
-            </Link>
-          </div>
+      <Card title="Upcoming Assessments">
+        {upcomingAssessments.length === 0 ? (
+          <p className="text-sm text-text-subtle">No upcoming assessments.</p>
         ) : (
-          <div className="text-sm text-gray-500">No recommendation available yet. Start a course to get suggestions.</div>
+          <div className="space-y-3">
+            {upcomingAssessments.map((assessment) => (
+              <div key={assessment._id} className="flex items-center justify-between p-3 border border-line-soft rounded-lg">
+                <div>
+                  <p className="font-medium text-text-base">{assessment.title}</p>
+                  <p className="text-xs text-text-muted">{assessment.courseTitle}</p>
+                </div>
+                <Button variant="outline" onClick={() => navigate(`/student/assessments/${assessment._id}`)}>
+                  {assessment.windowStatus === 'upcoming' ? 'View' : 'Start'}
+                </Button>
+              </div>
+            ))}
+          </div>
         )}
       </Card>
 
-      <Card title="My Certificates" action={<Link to="/student/certificates"><Button variant="outline">View All</Button></Link>}>
+      <Card
+        title="My Certificates"
+        action={<Button variant="outline" onClick={() => navigate('/student/certificates')}>View All</Button>}
+      >
         {certificatesLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <LoadingSpinner size="md" />
-          </div>
+          <div className="flex items-center justify-center py-8"><LoadingSpinner size="md" /></div>
         ) : certificates.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>No certificates available yet.</p>
-          </div>
+          <div className="text-center py-8 text-text-subtle">No certificates yet.</div>
         ) : (
           <div className="space-y-3">
             {certificates.slice(0, 3).map((certificate) => (
-              <div
-                key={certificate._id}
-                className="p-4 border border-gray-200 rounded-lg flex items-center justify-between"
-              >
+              <div key={certificate._id} className="p-4 border border-line-soft rounded-lg flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{certificate.certificateName || 'Certificate'}</p>
-                  <p className="text-sm text-gray-600">
-                    {certificate.certificateNumber} • Issued on {new Date(certificate.issuedAt).toLocaleDateString()}
+                  <p className="font-medium text-text-base">{certificate.certificateName || 'Certificate'}</p>
+                  <p className="text-sm text-text-muted">
+                    {certificate.certificateNumber} • {new Date(certificate.issuedAt).toLocaleDateString()}
                   </p>
                 </div>
                 <Badge variant="success">Issued</Badge>
@@ -284,48 +221,24 @@ const StudentDashboard = () => {
         )}
       </Card>
 
-      {/* Announcements */}
-      <Card title="Announcements" icon={<span className="text-xl">🔔</span>}>
-        {announcements.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>No announcements</p>
-            <p className="text-sm mt-2">Check back later for important updates and news!</p>
-          </div>
+      <Card title="Announcements">
+        {recentAnnouncements.length === 0 ? (
+          <div className="text-center py-8 text-text-subtle">No announcements.</div>
         ) : (
           <div className="space-y-4">
-            {announcements.map((announcement) => (
+            {recentAnnouncements.map((announcement) => (
               <div
                 key={announcement._id}
-                className={`p-4 border rounded-lg ${
-                  announcement.pinned 
-                    ? 'border-brand-300 bg-brand-50' 
-                    : 'border-gray-200 bg-white'
-                }`}
+                className={`p-4 border rounded-lg ${announcement.pinned ? 'border-brand-300 bg-brand-50' : 'border-line-soft'}`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-semibold text-gray-900">{announcement.title}</h4>
-                      {announcement.pinned && (
-                        <span className="px-2 py-1 bg-brand-200 text-brand-800 rounded text-xs font-medium">
-                          Pinned
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600">{announcement.message}</p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                      <span>By: {announcement.createdBy?.name || 'Admin'}</span>
-                      <span>
-                        {new Date(announcement.createdAt).toLocaleDateString()}
-                      </span>
-                      {announcement.courseId && (
-                        <span>Course: {announcement.courseId?.title || 'N/A'}</span>
-                      )}
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="font-semibold text-text-base">{announcement.title}</h4>
+                  {announcement.pinned && <Badge variant="primary">Pinned</Badge>}
                 </div>
+                <p className="text-sm text-text-muted">{announcement.message}</p>
               </div>
             ))}
+            <Button variant="outline" onClick={() => navigate('/student/announcements')}>View All Announcements</Button>
           </div>
         )}
       </Card>
@@ -334,4 +247,3 @@ const StudentDashboard = () => {
 };
 
 export default StudentDashboard;
-

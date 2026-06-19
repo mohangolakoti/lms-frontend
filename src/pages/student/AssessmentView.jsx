@@ -1,5 +1,5 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { studentAPI } from '../../services/api';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -16,86 +16,104 @@ const AssessmentView = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [started, setStarted] = useState(false);
+  const timeRemainingRef = useRef(0);
+  const assessmentRef = useRef(null);
+  const submittingRef = useRef(false);
 
-  useEffect(() => {
-    fetchAssessment();
-  }, [id]);
-
-  useEffect(() => {
-    if (assessment && !submission && assessment.duration) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            handleAutoSubmit();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timer);
-    }
-  }, [assessment, submission]);
-
-  const fetchAssessment = async () => {
+  const fetchAssessment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await studentAPI.getAssessmentById(id);
       if (response.data.success) {
         const found = response.data.data;
         setAssessment(found);
+        assessmentRef.current = found;
         if (found.submitted && found.submission) {
           setSubmission(found.submission);
-        } else {
-          setTimeRemaining(found.duration * 60); // Convert to seconds
+          setStarted(true);
+        } else if (found.windowStatus === 'live') {
+          setTimeRemaining(found.duration * 60);
+          timeRemainingRef.current = found.duration * 60;
+          const saved = sessionStorage.getItem(`assessment-${id}-answers`);
+          if (saved) setAnswers(JSON.parse(saved));
         }
       }
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to load assessment');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load assessment');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const handleAnswerChange = (questionId, answer) => {
-    setAnswers({ ...answers, [questionId]: answer });
-  };
+  useEffect(() => {
+    fetchAssessment();
+  }, [fetchAssessment]);
 
-  const handleSubmit = async () => {
-    if (window.confirm('Are you sure you want to submit? You cannot change your answers after submission.')) {
-      await submitAssessment();
-    }
-  };
-
-  const handleAutoSubmit = async () => {
-    await submitAssessment(true);
-  };
-
-  const submitAssessment = async (autoSubmit = false) => {
+  const submitAssessment = useCallback(async (autoSubmit = false) => {
+    if (submittingRef.current || !assessmentRef.current) return;
+    submittingRef.current = true;
     try {
       setSubmitting(true);
-      const answerArray = Object.keys(answers).map(questionId => ({
+      const answerArray = Object.keys(answers).map((questionId) => ({
         questionId,
         answer: answers[questionId],
       }));
 
       const response = await studentAPI.submitAssessment(id, {
         answers: answerArray,
-        timeTaken: assessment.duration * 60 - timeRemaining,
+        timeTaken: assessmentRef.current.duration * 60 - timeRemainingRef.current,
       });
 
       if (response.data.success) {
+        sessionStorage.removeItem(`assessment-${id}-answers`);
         setSubmission(response.data.data);
-        if (autoSubmit) {
-          alert('Time is up! Your assessment has been automatically submitted.');
-        }
-        fetchAssessment(); // Refresh to get updated data
+        await fetchAssessment();
+        if (autoSubmit) alert('Time is up! Your assessment has been automatically submitted.');
       }
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to submit assessment');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to submit assessment');
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
+  }, [answers, fetchAssessment, id]);
+
+  useEffect(() => {
+    if (!started || submission || !assessment?.duration || assessment.windowStatus !== 'live') {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      timeRemainingRef.current = Math.max(0, timeRemainingRef.current - 1);
+      setTimeRemaining(timeRemainingRef.current);
+      if (timeRemainingRef.current <= 0) {
+        submitAssessment(true);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [started, submission, assessment, submitAssessment]);
+
+  useEffect(() => {
+    if (started && !submission) {
+      sessionStorage.setItem(`assessment-${id}-answers`, JSON.stringify(answers));
+    }
+  }, [answers, started, submission, id]);
+
+  const handleAnswerChange = (questionId, answer) => {
+    setAnswers({ ...answers, [questionId]: answer });
+  };
+
+  const unansweredCount = assessment?.questions?.filter((_, index) => answers[index] === undefined || answers[index] === '').length || 0;
+
+  const handleSubmit = async () => {
+    if (unansweredCount > 0) {
+      if (!window.confirm(`${unansweredCount} question(s) unanswered. Submit anyway?`)) return;
+    } else if (!window.confirm('Are you sure you want to submit?')) {
+      return;
+    }
+    await submitAssessment(false);
   };
 
   const formatTime = (seconds) => {
@@ -115,9 +133,7 @@ const AssessmentView = () => {
   if (error || !assessment) {
     return (
       <div className="space-y-6">
-        <Link to="/student/assessments">
-          <Button variant="secondary">← Back to Assessments</Button>
-        </Link>
+        <Button variant="secondary" onClick={() => navigate('/student/assessments')}>← Back to Assessments</Button>
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error || 'Assessment not found'}
         </div>
@@ -125,159 +141,158 @@ const AssessmentView = () => {
     );
   }
 
+  if (!submission && assessment.windowStatus === 'upcoming') {
+    return (
+      <div className="space-y-6">
+        <Button variant="secondary" onClick={() => navigate('/student/assessments')}>← Back</Button>
+        <Card>
+          <h1 className="text-2xl font-bold text-text-base mb-2">{assessment.title}</h1>
+          <Badge variant="warning" className="mb-4">Not yet available</Badge>
+          <p className="text-text-muted">
+            Opens on {assessment.startDate ? new Date(assessment.startDate).toLocaleString() : 'TBD'}
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!submission && assessment.windowStatus === 'closed') {
+    return (
+      <div className="space-y-6">
+        <Button variant="secondary" onClick={() => navigate('/student/assessments')}>← Back</Button>
+        <Card>
+          <h1 className="text-2xl font-bold text-text-base mb-2">{assessment.title}</h1>
+          <Badge variant="danger" className="mb-4">Assessment closed</Badge>
+          <p className="text-text-muted">The submission window has ended.</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!started && !submission) {
+    return (
+      <div className="space-y-6">
+        <Button variant="secondary" onClick={() => navigate('/student/assessments')}>← Back</Button>
+        <Card>
+          <h1 className="text-2xl font-bold text-text-base mb-2">{assessment.title}</h1>
+          <p className="text-text-muted mb-4">{assessment.description}</p>
+          <ul className="text-sm text-text-muted space-y-1 mb-6">
+            <li>Questions: {assessment.questions?.length || 0}</li>
+            <li>Duration: {assessment.duration} minutes</li>
+            <li>Passing marks: {assessment.passingMarks} / {assessment.totalMarks}</li>
+          </ul>
+          <Button onClick={() => setStarted(true)}>Start Assessment</Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Link to="/student/assessments">
-          <Button variant="secondary">← Back to Assessments</Button>
-        </Link>
-        {!submission && timeRemaining > 0 && (
+        <Button variant="secondary" onClick={() => navigate('/student/assessments')}>← Back</Button>
+        {!submission && started && timeRemaining > 0 && (
           <div className="flex items-center gap-4">
-            <div className="text-lg font-semibold text-brand-700">
-              Time Remaining: {formatTime(timeRemaining)}
-            </div>
+            <div className="text-lg font-semibold text-brand-700">Time: {formatTime(timeRemaining)}</div>
             <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Submitting...' : 'Submit Assessment'}
+              {submitting ? 'Submitting...' : 'Submit'}
             </Button>
           </div>
         )}
       </div>
 
       <Card>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{assessment.title}</h1>
-        {assessment.description && (
-          <p className="text-gray-600 mb-4">{assessment.description}</p>
-        )}
-        <div className="flex items-center gap-4 text-sm text-gray-500">
-          <span>📚 {assessment.courseId?.title || 'Course'}</span>
+        <h1 className="text-2xl font-bold text-text-base mb-2">{assessment.title}</h1>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted">
           <span>📝 {assessment.questions?.length || 0} questions</span>
-          <span>⏱️ {(assessment.duration || 0)} minutes</span>
-          <span>📊 Total Marks: {assessment.totalMarks}</span>
-          <span>✅ Passing: {assessment.passingMarks}</span>
+          <span>⏱️ {assessment.duration} minutes</span>
+          <span>📊 Total: {assessment.totalMarks}</span>
         </div>
         {submission && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-gray-900">Your Score</p>
-                <p className="text-2xl font-bold text-brand-700">
-                  {submission.score} / {submission.totalMarks} ({submission.percentage?.toFixed(1)}%)
-                </p>
-              </div>
-              <Badge variant={submission.passed ? 'success' : 'danger'}>
-                {submission.passed ? 'PASSED' : 'FAILED'}
-              </Badge>
+          <div className="mt-4 p-4 bg-info-50 border border-info-200 rounded-lg flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-text-base">Your Score</p>
+              <p className="text-2xl font-bold text-brand-700">
+                {submission.score} / {submission.totalMarks} ({submission.percentage?.toFixed(1)}%)
+              </p>
             </div>
+            <Badge variant={submission.passed ? 'success' : 'danger'}>
+              {submission.passed ? 'PASSED' : 'FAILED'}
+            </Badge>
           </div>
         )}
       </Card>
 
       {!submission ? (
         <Card title="Questions">
-          {assessment.questions && assessment.questions.length > 0 ? (
-            <div className="space-y-6">
-              {assessment.questions.map((question, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="font-semibold text-gray-900">{index + 1}.</span>
-                    <div className="flex-1">
-                      <p className="text-gray-900 mb-2">{question.question}</p>
-                      {question.marks && (
-                        <span className="text-xs text-gray-500">({question.marks} marks)</span>
-                      )}
-                    </div>
-                  </div>
-                  {question.type === 'mcq' && question.options && (
-                    <div className="space-y-2 ml-6">
-                      {question.options.map((option, optIndex) => (
-                        <label key={optIndex} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`question-${index}`}
-                            value={option}
-                            checked={answers[index] === option}
-                            onChange={(e) => handleAnswerChange(index, e.target.value)}
-                            className="text-brand-600 focus:ring-brand-500"
-                          />
-                          <span>{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                  {question.type === 'true-false' && (
-                    <div className="space-y-2 ml-6">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`question-${index}`}
-                          value="true"
-                          checked={answers[index] === 'true'}
-                          onChange={(e) => handleAnswerChange(index, e.target.value)}
-                          className="text-brand-600 focus:ring-brand-500"
-                        />
-                        <span>True</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`question-${index}`}
-                          value="false"
-                          checked={answers[index] === 'false'}
-                          onChange={(e) => handleAnswerChange(index, e.target.value)}
-                          className="text-brand-600 focus:ring-brand-500"
-                        />
-                        <span>False</span>
-                      </label>
-                    </div>
-                  )}
-                  {(question.type === 'short-answer' || question.type === 'essay') && (
-                    <div className="ml-6">
-                      <textarea
-                        className="input-field w-full"
-                        rows={question.type === 'essay' ? 6 : 3}
-                        value={answers[index] || ''}
-                        onChange={(e) => handleAnswerChange(index, e.target.value)}
-                        placeholder="Type your answer here..."
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No questions available</p>
+          {unansweredCount > 0 && (
+            <p className="text-sm text-warning-700 mb-4">{unansweredCount} unanswered</p>
           )}
+          <div className="space-y-6">
+            {assessment.questions?.map((question, index) => (
+              <div key={index} className="border border-line-soft rounded-lg p-4">
+                <p className="font-medium text-text-base mb-3">{index + 1}. {question.question}</p>
+                {question.type === 'mcq' && (
+                  <div className="space-y-2 ml-4">
+                    {question.options?.map((option, optIndex) => (
+                      <label key={optIndex} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`question-${index}`}
+                          value={option}
+                          checked={answers[index] === option}
+                          onChange={(e) => handleAnswerChange(index, e.target.value)}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {question.type === 'true-false' && (
+                  <div className="space-y-2 ml-4">
+                    {['true', 'false'].map((value) => (
+                      <label key={value} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`question-${index}`}
+                          value={value}
+                          checked={answers[index] === value}
+                          onChange={(e) => handleAnswerChange(index, e.target.value)}
+                        />
+                        <span className="capitalize">{value}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {(question.type === 'short-answer' || question.type === 'fill-in-the-blank') && (
+                  <textarea
+                    className="input-field w-full ml-4"
+                    rows={3}
+                    value={answers[index] || ''}
+                    onChange={(e) => handleAnswerChange(index, e.target.value)}
+                    placeholder="Type your answer..."
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         </Card>
       ) : (
         <Card title="Your Answers">
           <div className="space-y-6">
             {assessment.questions?.map((question, index) => {
-              // Match answer by index since questions don't have _id
-              const answer = submission.answers?.find(a => a.questionId === index);
+              const answer = submission.answers?.find((a) => a.questionId === index);
               return (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="font-semibold text-gray-900">{index + 1}.</span>
-                    <div className="flex-1">
-                      <p className="text-gray-900 mb-2">{question.question}</p>
-                    </div>
+                <div key={index} className="border border-line-soft rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <p className="text-text-base">{index + 1}. {question.question}</p>
                     {answer && (
                       <Badge variant={answer.isCorrect ? 'success' : 'danger'}>
-                        {answer.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                        {answer.isCorrect ? 'Correct' : 'Incorrect'}
                       </Badge>
                     )}
                   </div>
-                  <div className="ml-6 space-y-2">
-                    <div>
-                      <p className="text-sm text-gray-600">Your Answer:</p>
-                      <p className="text-gray-900">{answer?.answer || 'Not answered'}</p>
-                    </div>
-                    {answer && (
-                      <p className="text-sm text-gray-500">
-                        Marks: {answer.marksObtained} / {question.marks}
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-sm text-text-muted">Your answer: {answer?.answer || 'Not answered'}</p>
                 </div>
               );
             })}
@@ -289,4 +304,3 @@ const AssessmentView = () => {
 };
 
 export default AssessmentView;
-

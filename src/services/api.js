@@ -116,17 +116,30 @@ export const authAPI = {
 // Student API
 export const studentAPI = {
   getDashboard: () => api.get('/students/dashboard'),
-  getCourses: () => api.get('/students/courses'),
+  getLearningPath: () => api.get('/students/learning-path'),
+  getProfile: () => api.get('/students/profile'),
+  getCalendar: () => api.get('/students/calendar'),
+  getBookmarks: () => api.get('/students/bookmarks'),
+  toggleBookmark: (data) => api.post('/students/bookmarks', data),
+  getCourses: (params) => api.get('/students/courses', { params }),
   getCourseDetails: (courseId) => api.get(`/students/courses/${courseId}`),
-  updateLessonProgress: (courseId, lessonId, data) => 
+  getCourseResume: (courseId) => api.get(`/students/courses/${courseId}/resume`),
+  updateLessonProgress: (courseId, lessonId, data) =>
     api.put(`/students/courses/${courseId}/lessons/${lessonId}/progress`, data),
-  getAssessments: () => api.get('/students/assessments'),
+  getLessonNote: (courseId, lessonId) =>
+    api.get(`/students/courses/${courseId}/lessons/${lessonId}/note`),
+  saveLessonNote: (courseId, lessonId, content) =>
+    api.put(`/students/courses/${courseId}/lessons/${lessonId}/note`, { content }),
+  getAssessments: (params) => api.get('/students/assessments', { params }),
   getAssessmentById: (assessmentId) => api.get(`/students/assessments/${assessmentId}`),
-  submitAssessment: (assessmentId, data) => 
+  submitAssessment: (assessmentId, data) =>
     api.post(`/students/assessments/${assessmentId}/submit`, data),
   getAnnouncements: () => api.get('/students/announcements'),
+  markAnnouncementRead: (announcementId) =>
+    api.put(`/students/announcements/${announcementId}/read`),
   getNotifications: (params) => api.get('/students/notifications', { params }),
-  markNotificationRead: (notificationId) => 
+  getUnreadNotificationCount: () => api.get('/students/notifications/unread-count'),
+  markNotificationRead: (notificationId) =>
     api.put(`/students/notifications/${notificationId}/read`),
   markAllNotificationsRead: () => api.put('/students/notifications/read-all'),
   getNotificationPreferences: () => api.get('/students/notifications/preferences'),
@@ -135,6 +148,7 @@ export const studentAPI = {
   getMyCertificates: () => api.get('/certificates/my'),
   downloadCertificate: (certificateNumber) =>
     api.get(`/certificates/download/${certificateNumber}`, { responseType: 'blob' }),
+  verifyCertificate: (certificateNumber) => api.get(`/certificates/verify/${certificateNumber}`),
 };
 
 // Admin API

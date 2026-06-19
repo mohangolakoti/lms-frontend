@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStudentCourses } from '../../hooks/useCourses';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -6,9 +7,12 @@ import Badge from '../../components/Badge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const Courses = () => {
-  const { courses, loading, error } = useStudentCourses();
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const { courses, pagination, loading, error } = useStudentCourses({ page, limit: 12, search });
 
-  if (loading) {
+  if (loading && courses.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
@@ -26,15 +30,27 @@ const Courses = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title mb-2">Courses</h1>
-        <p className="text-text-muted">Track your assigned courses and continue exactly where you left off.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="page-title mb-2">Courses</h1>
+          <p className="text-text-muted">Track your assigned courses and continue exactly where you left off.</p>
+        </div>
+        <input
+          type="search"
+          className="input-field w-full md:w-72"
+          placeholder="Search courses..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+        />
       </div>
 
       {courses.length === 0 ? (
         <Card>
           <div className="text-center py-12 text-text-subtle">
-            <p>No courses assigned yet. Check back later!</p>
+            <p>No courses found.</p>
           </div>
         </Card>
       ) : (
@@ -64,19 +80,26 @@ const Courses = () => {
                   <span className="font-medium">{Math.round(course.progress || 0)}%</span>
                 </div>
                 <div className="w-full bg-surface-muted rounded-full h-2">
-                  <div
-                    className="bg-brand-500 h-2 rounded-full"
-                    style={{ width: `${course.progress || 0}%` }}
-                  />
+                  <div className="bg-brand-500 h-2 rounded-full" style={{ width: `${course.progress || 0}%` }} />
                 </div>
               </div>
-              <Link to={`/student/courses/${course._id}`}>
-                <Button className="w-full">
-                  {course.completed ? 'Review Course' : 'Continue Learning →'}
-                </Button>
-              </Link>
+              <Button className="w-full" onClick={() => navigate(`/student/courses/${course._id}`)}>
+                {course.completed ? 'Review Course' : 'Continue Learning →'}
+              </Button>
             </Card>
           ))}
+        </div>
+      )}
+
+      {pagination.pages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <Button variant="outline" disabled={!pagination.hasPrevPage} onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </Button>
+          <span className="text-sm text-text-muted">Page {pagination.page} of {pagination.pages}</span>
+          <Button variant="outline" disabled={!pagination.hasNextPage} onClick={() => setPage((p) => p + 1)}>
+            Next
+          </Button>
         </div>
       )}
     </div>
@@ -84,4 +107,3 @@ const Courses = () => {
 };
 
 export default Courses;
-
