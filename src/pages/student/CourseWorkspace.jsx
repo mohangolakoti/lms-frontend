@@ -14,8 +14,8 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
   const activeLessonId = lessonIdProp || lessonIdParam;
   const navigate = useNavigate();
   const { course, loading, error, refetch } = useCourseDetails(courseId, 'student');
-  const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [openModuleIndex, setOpenModuleIndex] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [bookmarked, setBookmarked] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -28,11 +28,14 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
     : null;
   const currentModule = activeLessonId
     ? modules.find((m) => m.lessons?.some((l) => l._id === activeLessonId))
-    : modules[selectedModuleIndex];
+    : modules[openModuleIndex];
 
   useEffect(() => {
     if (activeLessonId && currentModule) {
-      setSelectedModuleIndex(modules.findIndex((m) => m._id === currentModule._id));
+      const moduleIndex = modules.findIndex((m) => m._id === currentModule._id);
+      if (moduleIndex >= 0) {
+        setOpenModuleIndex(moduleIndex);
+      }
     }
   }, [activeLessonId, currentModule, modules]);
 
@@ -148,6 +151,10 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
     }
   };
 
+  const toggleModule = (moduleIndex) => {
+    setOpenModuleIndex((currentIndex) => (currentIndex === moduleIndex ? -1 : moduleIndex));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -188,30 +195,93 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
             {!activeLessonId && (
               <Button onClick={handleContinueLearning}>Continue Learning →</Button>
             )}
-            <Button variant="outline" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              {sidebarOpen ? 'Hide Chapters' : 'Show Chapters'}
+            <Button variant="outline" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+              ☰ Chapters
             </Button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-0 lg:gap-6 p-4 lg:p-6">
-        {(sidebarOpen || !activeLessonId) && (
-          <aside className="w-full lg:w-80 flex-shrink-0">
-            <div className="bg-white rounded-xl border border-line-soft p-4 lg:sticky lg:top-6 max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto">
-              <h2 className="text-lg font-semibold text-text-base mb-3">Course Content</h2>
-              <div className="space-y-2">
+        <aside className="hidden lg:block w-full lg:w-80 flex-shrink-0">
+          <div className="bg-white rounded-xl border border-line-soft p-4 lg:sticky lg:top-6 max-h-[calc(100vh-220px)] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-text-base mb-3">Course Content</h2>
+            <div className="space-y-2">
+              {modules.map((module, moduleIndex) => {
+                const isExpanded = openModuleIndex === moduleIndex;
+                return (
+                  <div key={module._id} className="border border-line-soft rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleModule(moduleIndex)}
+                      className="w-full text-left p-3 bg-surface-muted hover:bg-brand-50 flex items-center justify-between"
+                    >
+                      <span className="font-medium text-sm text-text-base">{module.title}</span>
+                      <span className="flex items-center gap-2 text-xs text-text-muted">
+                        <span>{Math.round(module.completionPercentage || 0)}%</span>
+                        <span>{isExpanded ? '▾' : '▸'}</span>
+                      </span>
+                    </button>
+                    {isExpanded && (
+                      <div className="divide-y divide-line-soft">
+                        {(module.lessons || []).map((lesson, lessonIndex) => {
+                          const isActive = activeLessonId === lesson._id;
+                          return (
+                            <button
+                              key={lesson._id}
+                              ref={isActive ? activeLessonRef : null}
+                              type="button"
+                              onClick={() => navigate(`/student/courses/${courseId}/lessons/${lesson._id}`)}
+                              className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 ${
+                                isActive ? 'bg-brand-50 border-l-4 border-brand-500' : 'hover:bg-surface-muted'
+                              }`}
+                            >
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                lesson.completed ? 'bg-success-600 text-white' : 'bg-surface-muted text-text-muted'
+                              }`}>
+                                {lesson.completed ? '✓' : lessonIndex + 1}
+                              </span>
+                              <span className="truncate">{lesson.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <button
+              type="button"
+              aria-label="Close sidebar"
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <aside className="absolute right-0 top-0 h-full w-[88vw] max-w-sm bg-white shadow-2xl border-l border-line-soft overflow-y-auto">
+              <div className="p-4 border-b border-line-soft flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-base">Course Content</h2>
+                <Button variant="secondary" onClick={() => setSidebarOpen(false)}>Close</Button>
+              </div>
+              <div className="p-4 space-y-2">
                 {modules.map((module, moduleIndex) => {
-                  const isExpanded = selectedModuleIndex === moduleIndex || !!activeLessonId;
+                  const isExpanded = openModuleIndex === moduleIndex;
                   return (
                     <div key={module._id} className="border border-line-soft rounded-lg overflow-hidden">
                       <button
                         type="button"
-                        onClick={() => setSelectedModuleIndex(moduleIndex)}
+                        onClick={() => toggleModule(moduleIndex)}
                         className="w-full text-left p-3 bg-surface-muted hover:bg-brand-50 flex items-center justify-between"
                       >
                         <span className="font-medium text-sm text-text-base">{module.title}</span>
-                        <span className="text-xs text-text-muted">{Math.round(module.completionPercentage || 0)}%</span>
+                        <span className="flex items-center gap-2 text-xs text-text-muted">
+                          <span>{Math.round(module.completionPercentage || 0)}%</span>
+                          <span>{isExpanded ? '▾' : '▸'}</span>
+                        </span>
                       </button>
                       {isExpanded && (
                         <div className="divide-y divide-line-soft">
@@ -222,7 +292,10 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
                                 key={lesson._id}
                                 ref={isActive ? activeLessonRef : null}
                                 type="button"
-                                onClick={() => navigate(`/student/courses/${courseId}/lessons/${lesson._id}`)}
+                                onClick={() => {
+                                  navigate(`/student/courses/${courseId}/lessons/${lesson._id}`);
+                                  setSidebarOpen(false);
+                                }}
                                 className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 ${
                                   isActive ? 'bg-brand-50 border-l-4 border-brand-500' : 'hover:bg-surface-muted'
                                 }`}
@@ -242,8 +315,8 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
                   );
                 })}
               </div>
-            </div>
-          </aside>
+            </aside>
+          </div>
         )}
 
         <main className="flex-1 min-w-0 space-y-4">
@@ -296,7 +369,7 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
             <Card>
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-text-base">
-                  {currentModule ? `${selectedModuleIndex + 1}. ${currentModule.title}` : 'Select a chapter'}
+                  {currentModule ? currentModule.title : 'Select a chapter'}
                 </h2>
                 <p className="text-sm text-text-muted">
                   {currentModule?.lessons?.length || 0} lessons in this chapter

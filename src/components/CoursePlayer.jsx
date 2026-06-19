@@ -234,7 +234,8 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) 
                 src={videoSource.embedUrl}
                 className="w-full h-full border-0"
                 title={lesson.title}
-                allow="autoplay"
+                allow="autoplay; fullscreen"
+                allowFullScreen
                 onLoad={() => setIsLoading(false)}
               />
             )}
@@ -248,6 +249,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) 
                 )}
               </div>
             )}
+
           </div>
           <Watermark user={user} preview={isPreview} />
         </div>
