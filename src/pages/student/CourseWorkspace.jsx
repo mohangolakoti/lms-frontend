@@ -181,7 +181,7 @@ const CourseWorkspace = ({ lessonId: lessonIdProp }) => {
 
   return (
     <div className="min-h-screen bg-surface-page">
-      <div className="bg-gradient-to-r from-brand-600 to-brand-800 text-white p-4 md:p-6">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 text-white p-4 md:p-6 rounded-2xl">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div>
             <Link to="/student/courses" className="text-brand-100 text-sm hover:text-white">← All Courses</Link>
