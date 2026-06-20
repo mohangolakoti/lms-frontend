@@ -51,7 +51,6 @@ const StudentLayout = ({ children }) => {
       onLogout={handleLogout}
       menuItems={menuItems}
       userFallback="S"
-      appLabel="LMS Student"
       lessonMode={isLessonMode}
     >
       {isLessonMode ? <main className="p-0">{children}</main> : children}

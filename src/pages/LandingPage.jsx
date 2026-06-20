@@ -19,7 +19,8 @@ import {
   MapPin,
   ShieldCheck,
 } from "lucide-react";
-import { c1, c2, c3, c4, c5, logo } from "../constants";
+import { c1, c2, c3, c4, c5 } from "../constants";
+import Logo from '../components/Logo';
 
 const Carousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -313,11 +314,7 @@ const LandingPage = ({ onSignIn, onSignUp }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <img
-                src={logo}
-                alt="SiliconMetaSystems Logo"
-                className="w-40 h-10"
-              />
+              <Logo variant="full" alt="SiliconMeta Learning" className="h-10 w-auto max-w-[11rem] sm:max-w-[14rem]" />
             </div>
 
             <div className="hidden md:flex items-center space-x-8">
@@ -423,8 +420,8 @@ const LandingPage = ({ onSignIn, onSignUp }) => {
       <section id="about" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#050a30] mb-4">
-              Why Choose SiliconMetaSystems?
+              <h2 className="text-4xl font-bold text-[#050a30] mb-4">
+              Why Choose Our Platform?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               We provide everything you need to succeed in your learning journey
@@ -518,13 +515,7 @@ const LandingPage = ({ onSignIn, onSignUp }) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center space-x-4 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-[#059aef] to-[#05c1dd] rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-7 h-7 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold">SiliconMetaSystems</h3>
-                  <p className="text-blue-200">Learning Management System</p>
-                </div>
+                <Logo variant="full" alt="SiliconMeta Learning" className="h-12 w-auto max-w-[15rem]" />
               </div>
               <p className="text-gray-300 mb-6 max-w-md">
                 Empowering learners worldwide with high-quality education and

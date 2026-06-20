@@ -24,7 +24,6 @@ const InstructorLayout = ({ children }) => {
       onLogout={handleLogout}
       menuItems={menuItems}
       userFallback="I"
-      appLabel="LMS Instructor"
     >
       {children}
     </AppShell>

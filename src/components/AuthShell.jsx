@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Logo from './Logo';
 
 const AuthShell = ({ title, subtitle, altText, altLink, altLinkText, children }) => {
   return (
@@ -6,9 +7,7 @@ const AuthShell = ({ title, subtitle, altText, altLink, altLinkText, children })
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl flex items-center justify-center shadow-card">
-              <span className="text-white text-2xl font-bold">LMS</span>
-            </div>
+            <Logo variant="full" alt="SiliconMeta Learning" className="h-16 w-auto max-w-[15rem] sm:h-20" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-semibold text-text-base">{title}</h2>
           {subtitle && (

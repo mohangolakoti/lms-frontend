@@ -318,7 +318,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) 
 
 const Watermark = ({ user, preview = false }) => {
   if (!user) return null;
-  const watermarkText = user.email || user.id || 'LMS';
+  const watermarkText = user.email || user.id || 'SiliconMeta Learning';
   const opacity = preview ? 0.1 : 0.2;
 
   return (

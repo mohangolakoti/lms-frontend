@@ -28,7 +28,6 @@ const AdminLayout = ({ children }) => {
       onLogout={handleLogout}
       menuItems={menuItems}
       userFallback="A"
-      appLabel="LMS Admin"
     >
       {children}
     </AppShell>

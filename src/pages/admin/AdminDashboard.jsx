@@ -63,7 +63,7 @@ const AdminDashboard = () => {
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-6 text-white shadow-card">
         <h1 className="text-3xl font-semibold mb-2">Welcome Back, Admin!</h1>
-        <p className="text-brand-100">Here's an overview of your LMS platform</p>
+        <p className="text-brand-100">Here's an overview of your learning platform</p>
       </div>
 
       {/* Stats Grid */}
