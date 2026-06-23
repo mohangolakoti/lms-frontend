@@ -33,7 +33,7 @@ const AppShell = ({
                 <Logo
                   variant={sidebarCollapsed ? 'logo-only' : 'compact'}
                   alt="SiliconMeta Learning"
-                  className={sidebarCollapsed ? 'h-9 w-9' : 'h-8 w-auto max-w-[10rem]'}
+                  className={sidebarCollapsed ? 'h-9 w-9' : 'h-12 w-auto max-w-[10rem]'}
                 />
               </div>
               <div className="lg:hidden">
@@ -97,30 +97,14 @@ const AppShell = ({
       </div>
 
       <div className={`${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'} transition-all duration-300`}>
-        <header className="app-header h-16 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden text-text-subtle hover:text-text-base"
-            aria-label="Open sidebar"
-          >
-            ☰
-          </button>
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="hidden md:block lg:hidden">
-              <Logo variant="compact" alt="SiliconMeta Learning" className="h-8 w-auto max-w-[10rem]" />
-            </div>
-            <div className="hidden lg:block">
-              <Logo variant="product" alt="SiliconMeta Learning" className="h-10 w-auto max-w-[12rem]" />
-            </div>
-            <div className="md:hidden">
-              <Logo variant="short" alt="SiliconMeta Learning" className="h-8 w-auto max-w-[8rem]" />
-            </div>
-            <div className="w-10 h-10 bg-brand-600 rounded-full flex items-center justify-center text-white font-semibold">
-              {user?.name?.charAt(0).toUpperCase() || userFallback}
-            </div>
-          </div>
-        </header>
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="lg:hidden fixed top-4 left-4 z-30 h-10 w-10 rounded-full bg-surface-card border border-line-soft text-text-subtle hover:text-text-base shadow-card"
+          aria-label="Open sidebar"
+        >
+          ☰
+        </button>
 
         <main className="p-6">
           {children}
