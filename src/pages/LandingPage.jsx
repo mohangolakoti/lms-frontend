@@ -530,7 +530,7 @@ const LandingPage = ({ onSignIn, onSignUp }) => {
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
+              <h4 className="text-lg font-semibold mb-4 text-white">Quick Links</h4>
               <ul className="space-y-2">
                 <li>
                   <a
@@ -576,7 +576,7 @@ const LandingPage = ({ onSignIn, onSignUp }) => {
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-4">Contact Info</h4>
+              <h4 className="text-lg font-semibold mb-4 text-white">Contact Info</h4>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Mail className="w-5 h-5 text-[#05c1dd]" />

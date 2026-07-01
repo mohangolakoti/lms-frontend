@@ -10,6 +10,12 @@ const VIDEO_SOURCE_TYPES = {
   UNSUPPORTED: 'unsupported',
 };
 
+const PDF_SOURCE_TYPES = {
+  GOOGLE_DRIVE: 'google_drive',
+  DIRECT: 'direct',
+  UNSUPPORTED: 'unsupported',
+};
+
 const getYouTubeId = (url) => {
   if (!url) return null;
   const patterns = [
@@ -42,6 +48,8 @@ const getGoogleDriveFileId = (url) => {
 
 const isDirectVideoUrl = (url) => /\.(mp4|webm|ogg)(\?.*)?$/i.test(url || '');
 
+const isDirectPdfUrl = (url) => /\.pdf(\?.*)?$/i.test(url || '');
+
 const getVideoSource = (url) => {
   const youtubeId = getYouTubeId(url);
   if (youtubeId) {
@@ -66,6 +74,27 @@ const getVideoSource = (url) => {
   return { type: VIDEO_SOURCE_TYPES.UNSUPPORTED };
 };
 
+const getPdfSource = (url) => {
+  if (!url) return { type: PDF_SOURCE_TYPES.UNSUPPORTED };
+
+  const driveId = getGoogleDriveFileId(url);
+  if (driveId) {
+    return {
+      type: PDF_SOURCE_TYPES.GOOGLE_DRIVE,
+      embedUrl: `https://drive.google.com/file/d/${driveId}/preview`,
+    };
+  }
+
+  if (isDirectPdfUrl(url)) {
+    return {
+      type: PDF_SOURCE_TYPES.DIRECT,
+      embedUrl: `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`,
+    };
+  }
+
+  return { type: PDF_SOURCE_TYPES.UNSUPPORTED };
+};
+
 const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) => {
   const { user } = useAuth();
   const isPreview = mode === 'preview';
@@ -77,6 +106,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) 
   const dwellIntervalRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const videoSource = useMemo(() => getVideoSource(lesson?.url), [lesson?.url]);
+  const pdfSource = useMemo(() => getPdfSource(lesson?.url), [lesson?.url]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -257,14 +287,32 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) 
     }
 
     if (lesson.type === 'pdf') {
+      const pdfEmbedUrl = pdfSource.type === PDF_SOURCE_TYPES.UNSUPPORTED
+        ? lesson.url
+        : pdfSource.embedUrl;
+
       return (
         <div className="relative w-full" style={{ height: '80vh', userSelect: 'none' }}>
           <iframe
-            src={`${lesson.url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+            src={pdfEmbedUrl ? `${pdfEmbedUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH` : lesson.url}
             className="w-full h-full border-0"
             title={lesson.title}
+            allow="fullscreen"
+            allowFullScreen
             onContextMenu={(e) => e.preventDefault()}
+            onLoad={() => setIsLoading(false)}
           />
+          {pdfSource.type === PDF_SOURCE_TYPES.UNSUPPORTED && lesson.url && (
+            <div className="absolute bottom-4 left-4 right-4">
+              <div className="rounded-lg border border-line-soft bg-white/95 px-4 py-3 shadow-sm text-sm text-text-muted">
+                PDF preview could not be embedded here.
+                {' '}
+                <a href={lesson.url} target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
+                  Open the source in a new tab
+                </a>
+              </div>
+            </div>
+          )}
           <Watermark user={user} preview={isPreview} />
         </div>
       );
