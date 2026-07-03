@@ -92,7 +92,7 @@ const Carousel = () => {
             />
             <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
               <div className="text-center text-white max-w-2xl px-6">
-                <h2 className="text-5xl font-bold mb-4">{slide.title}</h2>
+                <h2 className="text-5xl font-bold mb-4 text-black">{slide.title}</h2>
                 <p className="text-xl mb-8 opacity-90">{slide.subtitle}</p>
                 <button className="px-8 py-4 bg-gradient-to-r from-[#059aef] to-[#05c1dd] text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
                   {slide.cta}
@@ -200,6 +200,19 @@ const TestimonialCard = ({ testimonial }) => (
 
 const LandingPage = ({ onSignIn, onSignUp }) => {
   const navigate = useNavigate();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 12);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const features = [
     {
       icon: BookOpen,
@@ -310,7 +323,13 @@ const LandingPage = ({ onSignIn, onSignUp }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
-      <nav className="bg-white shadow-sm sticky top-0 z-50">
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          isScrolled
+            ? 'bg-white/80 backdrop-blur-xl shadow-sm border-b border-white/60'
+            : 'bg-transparent border-b border-transparent shadow-none'
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -371,7 +390,7 @@ const LandingPage = ({ onSignIn, onSignUp }) => {
       {/* Hero Section with Carousel */}
       <section
         id="home"
-        className="py-20 bg-gradient-to-br from-[#cae8ff] via-[#b2e4ff] to-[#acf4ff]"
+        className="pt-32 pb-20 bg-gradient-to-br from-[#cae8ff] via-[#b2e4ff] to-[#acf4ff]"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">

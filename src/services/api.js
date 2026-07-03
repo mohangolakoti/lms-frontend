@@ -102,7 +102,11 @@ api.interceptors.response.use(
       }
     }
 
-    if (status === 401) {
+    // Only force-redirect for non-auth API calls that received a final 401.
+    // Auth-probe endpoints (e.g. /auth/me called by checkAuth on mount) are
+    // already handled gracefully by AuthContext's catch block — redirecting
+    // here would cause an infinite reload loop.
+    if (status === 401 && !isAuthEndpoint && !requestUrl.includes('/auth/me')) {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
