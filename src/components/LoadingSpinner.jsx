@@ -1,15 +1,28 @@
-const LoadingSpinner = ({ size = 'md', className = '' }) => {
+import Logo from './Logo';
+
+const LoadingSpinner = ({ size = 'md', className = '', fullscreen = false, label = 'Loading' }) => {
   const sizes = {
-    sm: 'h-4 w-4',
-    md: 'h-8 w-8',
-    lg: 'h-12 w-12',
+    sm: 'h-10 w-10',
+    md: 'h-16 w-16',
+    lg: 'h-24 w-24',
   };
 
-  return (
-    <div className={`flex items-center justify-center ${className}`}>
-      <div className={`animate-spin rounded-full border-2 border-brand-200 border-t-brand-600 ${sizes[size]}`}></div>
+  const content = (
+    <div className={`brand-loading-shell ${className}`.trim()} role="status" aria-live="polite" aria-label={label}>
+      <Logo
+        variant="logo-only"
+        alt=""
+        aria-hidden="true"
+        className={`${sizes[size]} brand-loading-logo`}
+      />
     </div>
   );
+
+  if (fullscreen) {
+    return <div className="app-loading-screen">{content}</div>;
+  }
+
+  return content;
 };
 
 export default LoadingSpinner;

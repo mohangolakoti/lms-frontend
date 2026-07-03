@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import LoadingSpinner from './components/LoadingSpinner';
 
 // Public pages (loaded eagerly or lazily)
 import LandingPage from './pages/LandingPage';
@@ -52,9 +53,7 @@ const StudentSessions = lazy(() => import('./pages/student/Sessions'));
 
 // Reusable Loading Fallback
 const PageLoader = () => (
-  <div className="min-h-[60vh] flex items-center justify-center">
-    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
-  </div>
+  <LoadingSpinner fullscreen size="lg" label="Loading experience" />
 );
 
 // Redirect component for authenticated users
@@ -62,11 +61,7 @@ const HomeRedirect = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-      </div>
-    );
+    return <LoadingSpinner fullscreen size="lg" label="Loading your workspace" />;
   }
 
   if (user) {
