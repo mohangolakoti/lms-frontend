@@ -53,6 +53,7 @@ const Assessments = () => {
     passingMarks: 50,
     startDate: '',
     endDate: '',
+    questions: [],
   });
   const [currentQuestion, setCurrentQuestion] = useState({
     question: '',
@@ -66,15 +67,22 @@ const Assessments = () => {
 
   const editorCourses = courses.filter((course) => course.instructorRole === 'editor');
 
-  const handleAddQuestion = () => {
+  const handleAddQuestion = (isEdit = false) => {
     if (!currentQuestion.question || !currentQuestion.correctAnswer) {
       setFormError('Please fill in question and correct answer');
       return;
     }
-    setFormData({
-      ...formData,
-      questions: [...formData.questions, { ...currentQuestion }],
-    });
+    if (isEdit) {
+      setEditForm({
+        ...editForm,
+        questions: [...(editForm.questions || []), { ...currentQuestion }],
+      });
+    } else {
+      setFormData({
+        ...formData,
+        questions: [...formData.questions, { ...currentQuestion }],
+      });
+    }
     setCurrentQuestion({
       question: '',
       type: 'mcq',
@@ -85,11 +93,18 @@ const Assessments = () => {
     setFormError('');
   };
 
-  const handleRemoveQuestion = (index) => {
-    setFormData({
-      ...formData,
-      questions: formData.questions.filter((_, i) => i !== index),
-    });
+  const handleRemoveQuestion = (index, isEdit = false) => {
+    if (isEdit) {
+      setEditForm({
+        ...editForm,
+        questions: (editForm.questions || []).filter((_, i) => i !== index),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        questions: formData.questions.filter((_, i) => i !== index),
+      });
+    }
   };
 
   const handleCreate = async (e) => {
@@ -147,6 +162,7 @@ const Assessments = () => {
       passingMarks: assessment.passingMarks,
       startDate: assessment.startDate ? new Date(assessment.startDate).toISOString().slice(0, 16) : '',
       endDate: assessment.endDate ? new Date(assessment.endDate).toISOString().slice(0, 16) : '',
+      questions: assessment.questions || [],
     });
     setShowEditModal(true);
   };
@@ -162,6 +178,7 @@ const Assessments = () => {
         passingMarks: Number(editForm.passingMarks),
         startDate: editForm.startDate || undefined,
         endDate: editForm.endDate || undefined,
+        questions: editForm.questions,
       });
       setShowEditModal(false);
       setEditingAssessment(null);
@@ -388,6 +405,7 @@ const Assessments = () => {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="Edit Assessment"
+        size="xl"
         footer={
           <>
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
@@ -399,12 +417,54 @@ const Assessments = () => {
           <Input label="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
           <Textarea label="Description" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
           <div className="grid grid-cols-3 gap-4">
-            <Input label="Duration (minutes)" type="number" value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} />
-            <Input label="Total Marks" type="number" value={editForm.totalMarks} onChange={(e) => setEditForm({ ...editForm, totalMarks: e.target.value })} />
-            <Input label="Passing Marks" type="number" value={editForm.passingMarks} onChange={(e) => setEditForm({ ...editForm, passingMarks: e.target.value })} />
+            <Input label="Duration (minutes)" type="number" value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: parseInt(e.target.value, 10) || 0 })} />
+            <Input label="Total Marks" type="number" value={editForm.totalMarks} onChange={(e) => setEditForm({ ...editForm, totalMarks: parseInt(e.target.value, 10) || 0 })} />
+            <Input label="Passing Marks" type="number" value={editForm.passingMarks} onChange={(e) => setEditForm({ ...editForm, passingMarks: parseInt(e.target.value, 10) || 0 })} />
           </div>
-          <Input label="Start Date" type="datetime-local" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
-          <Input label="End Date" type="datetime-local" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} />
+          {/* <Input label="Start Date" type="datetime-local" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
+          <Input label="End Date" type="datetime-local" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} /> */}
+          
+          <div className="border-t pt-4 space-y-4">
+            <h3 className="font-semibold">Questions</h3>
+            <Input label="Question" value={currentQuestion.question} onChange={(e) => setCurrentQuestion({ ...currentQuestion, question: e.target.value })} />
+            <Select
+              label="Type"
+              value={currentQuestion.type}
+              onChange={(e) => setCurrentQuestion({ ...currentQuestion, type: e.target.value })}
+              options={[
+                { value: 'mcq', label: 'Multiple Choice' },
+                { value: 'true-false', label: 'True/False' },
+                { value: 'short-answer', label: 'Short Answer' },
+              ]}
+            />
+            {currentQuestion.type === 'mcq' && (
+              <div className="space-y-2">
+                {currentQuestion.options.map((opt, idx) => (
+                  <Input
+                    key={idx}
+                    label={`Option ${idx + 1}`}
+                    value={opt}
+                    onChange={(e) => {
+                      const newOptions = [...currentQuestion.options];
+                      newOptions[idx] = e.target.value;
+                      setCurrentQuestion({ ...currentQuestion, options: newOptions });
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            <Input label="Correct Answer" value={currentQuestion.correctAnswer} onChange={(e) => setCurrentQuestion({ ...currentQuestion, correctAnswer: e.target.value })} />
+            <Input label="Marks" type="number" value={currentQuestion.marks} onChange={(e) => setCurrentQuestion({ ...currentQuestion, marks: parseInt(e.target.value, 10) || 1 })} />
+            <Button type="button" variant="outline" onClick={() => handleAddQuestion(true)}>Add Question</Button>
+            <div className="space-y-2">
+              {(editForm.questions || []).map((q, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                  <span className="text-sm">{idx + 1}. {q.question}</span>
+                  <Button type="button" variant="danger" className="text-xs py-1 px-2" onClick={() => handleRemoveQuestion(idx, true)}>Remove</Button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </Modal>
 
