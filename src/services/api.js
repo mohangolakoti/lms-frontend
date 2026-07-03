@@ -1,4 +1,5 @@
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 const isLocalFrontend = typeof window !== 'undefined'
@@ -12,6 +13,7 @@ const API_BASE_URL = import.meta.env.DEV && isLocalFrontend
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // Send HttpOnly cookies automatically
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,14 +21,28 @@ const api = axios.create({
 
 const refreshClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // Send HttpOnly cookies automatically
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// Configure automatic retry with exponential backoff to handle transient network/server hiccups
+const retryConfig = {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => {
+    // Retry on network errors or 5xx status codes (e.g. rate limit, bad gateway, cold starts)
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.response?.status >= 500;
+  },
+};
+
+axiosRetry(api, retryConfig);
+axiosRetry(refreshClient, retryConfig);
+
 let refreshRequest = null;
 
-// Request interceptor to add token
+// Request interceptor to add token if it exists in localStorage (legacy/hybrid fallback support)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -53,35 +69,36 @@ api.interceptors.response.use(
       || requestUrl.includes('/auth/forgotpassword')
       || requestUrl.includes('/auth/resetpassword');
 
+    // 401 unauthorized: attempt to rotate tokens via HttpOnly cookies
     if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        originalRequest._retry = true;
+      originalRequest._retry = true;
 
-        try {
-          if (!refreshRequest) {
-            refreshRequest = refreshClient.post('/auth/refresh', { refreshToken });
-          }
-
-          const refreshResponse = await refreshRequest;
-          const { token, refreshToken: rotatedRefreshToken, user } = refreshResponse.data.data || {};
-
-          if (token) {
-            localStorage.setItem('token', token);
-            if (rotatedRefreshToken) {
-              localStorage.setItem('refreshToken', rotatedRefreshToken);
-            }
-            if (user) {
-              localStorage.setItem('user', JSON.stringify(user));
-            }
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          }
-        } catch (refreshError) {
-          // Fall through to logout behavior below
-        } finally {
-          refreshRequest = null;
+      try {
+        if (!refreshRequest) {
+          // Send cookie-based POST request without body
+          refreshRequest = refreshClient.post('/auth/refresh');
         }
+
+        const refreshResponse = await refreshRequest;
+        const { token, refreshToken: rotatedRefreshToken, user } = refreshResponse.data.data || {};
+
+        // If backend returned a bearer token in the body, update localStorage as a fallback
+        if (token) {
+          localStorage.setItem('token', token);
+        }
+        if (rotatedRefreshToken) {
+          localStorage.setItem('refreshToken', rotatedRefreshToken);
+        }
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+
+        // Retry the original request
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Fall through to logout
+      } finally {
+        refreshRequest = null;
       }
     }
 
@@ -100,7 +117,7 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (data) => api.post('/auth/register', data),
-  refreshToken: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
+  refreshToken: () => api.post('/auth/refresh'), // Cookie-based refresh
   logout: () => api.post('/auth/logout'),
   logoutAll: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
@@ -108,7 +125,7 @@ export const authAPI = {
   revokeSession: (sessionId) => api.delete(`/auth/sessions/${sessionId}`),
   revokeAllSessions: () => api.delete('/auth/sessions'),
   forgotPassword: (email) => api.post('/auth/forgotpassword', { email }),
-  resetPassword: (token, password) => api.put(`/auth/resetpassword/${token}`, { password }),
+  resetPassword: (token, password) => api.post(`/auth/resetpassword/${token}`, { password }),
   updatePassword: (currentPassword, newPassword) => 
     api.put('/auth/updatepassword', { currentPassword, newPassword }),
 };

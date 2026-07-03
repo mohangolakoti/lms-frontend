@@ -22,12 +22,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await authAPI.getMe();
       if (response.data.success) {
@@ -37,10 +31,12 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      // Quietly ignore failed checks on mount, just clear credentials
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      setUser(null);
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
@@ -51,8 +47,8 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login(email, password);
       if (response.data.success) {
         const { token, refreshToken, user: userData } = response.data.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('refreshToken', refreshToken);
+        if (token) localStorage.setItem('token', token);
+        if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
         setIsAuthenticated(true);
@@ -72,8 +68,6 @@ export const AuthProvider = ({ children }) => {
       if (response.data.success) {
         const { token, refreshToken, user: newUser } = response.data.data || {};
 
-        // Public registration is student-only and may intentionally return no token
-        // until admin approval. Treat that as a non-authenticated success state.
         if (token && newUser) {
           localStorage.setItem('token', token);
           localStorage.setItem('refreshToken', refreshToken);

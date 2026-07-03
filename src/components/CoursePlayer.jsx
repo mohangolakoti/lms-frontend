@@ -157,7 +157,7 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) 
           }
         }
       }
-    }, 5000);
+    }, 20000); // 20-second interval to reduce DB write load
 
     const handleEnded = async () => {
       if (!completed) {
@@ -169,11 +169,28 @@ const CoursePlayer = ({ lesson, courseId, onProgressUpdate, mode = 'student' }) 
       }
     };
 
+    const handlePause = async () => {
+      if (videoRef.current) {
+        const currentTime = Math.floor(videoRef.current.currentTime);
+        if (currentTime !== lastWatchedRef.current) {
+          lastWatchedRef.current = currentTime;
+          await persistProgress({
+            lastWatchedSecond: currentTime,
+            completed: videoRef.current.ended,
+          });
+        }
+      }
+    };
+
     videoRef.current.addEventListener('ended', handleEnded);
+    videoRef.current.addEventListener('pause', handlePause);
 
     return () => {
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-      if (videoRef.current) videoRef.current.removeEventListener('ended', handleEnded);
+      if (videoRef.current) {
+        videoRef.current.removeEventListener('ended', handleEnded);
+        videoRef.current.removeEventListener('pause', handlePause);
+      }
     };
   }, [lesson._id, lesson.type, videoSource.type, isPreview, completed, persistProgress, lesson.lastWatchedSecond]);
 
