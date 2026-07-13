@@ -1,170 +1,152 @@
 # LMS Frontend
 
-A modern, production-ready React frontend for the Learning Management System.
+React-based Learning Management System UI. Deployed on Vercel.
+
+---
 
 ## Tech Stack
 
-- **React 18** - UI library
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **React Router** - Client-side routing
-- **Axios** - HTTP client
-- **Context API** - State management
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 18 |
+| Build Tool | Vite 5 |
+| Styling | Tailwind CSS |
+| Routing | React Router DOM v6 |
+| API Client | Axios + axios-retry |
+| State/Cache | TanStack Query v5 |
+| Icons | Lucide React |
+| Deployment | Vercel |
 
-## Features
+---
 
-- ✅ JWT Authentication (Login, Register, Forgot/Reset Password)
-- ✅ Role-based access control (Admin, Instructor, Student)
-- ✅ Protected routes with role guards
-- ✅ Responsive design (Mobile, Tablet, Desktop)
-- ✅ Modern UI with Tailwind CSS
-- ✅ Dashboard for each role
-- ✅ Reusable components
-- ✅ API service layer
-
-## Getting Started
+## Quick Start (Local Development)
 
 ### Prerequisites
+- Node.js 18+
+- Backend API running (see backend README)
 
-- Node.js 18+ installed
-- Backend server running on `http://localhost:3000`
+### 1. Install
 
-### Installation
+```bash
+git clone <your-frontend-repo-url>
+cd frontend
+npm install
+```
 
-1. **Install dependencies**
-   ```bash
-   npm install
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env — set VITE_API_BASE_URL to your backend URL
+```
+
+For local development with backend on port 3000:
+```
+VITE_API_BASE_URL=http://localhost:3000/api
+```
+
+### 3. Start development server
+
+```bash
+npm run dev
+# → http://localhost:3001
+```
+
+---
+
+## Environment Variables
+
+See [`.env.example`](.env.example) for full reference.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_BASE_URL` | ★ Yes | Full URL to the backend API (no trailing slash) |
+| `VITE_APP_NAME` | No | Display name shown in browser tab |
+| `VITE_APP_ENV` | No | Environment label (`development` / `production`) |
+
+---
+
+## Deployment on Vercel
+
+### Option A — Vercel Dashboard (Recommended for initial setup)
+
+1. Go to [vercel.com](https://vercel.com) and import your GitHub repository
+2. Vercel auto-detects Vite — no build config needed
+3. In **Project Settings → Environment Variables**, add:
    ```
-
-2. **Configure environment**
-   ```bash
-   cp .env.example .env
+   VITE_API_BASE_URL = https://your-backend.railway.app/api
+   VITE_APP_NAME    = Your LMS Name
+   VITE_APP_ENV     = production
    ```
-   
-   Edit `.env` and set:
-   ```env
-   VITE_API_BASE_URL=http://localhost:3000/api
-   ```
+4. Deploy — Vercel handles everything automatically
 
-3. **Start development server**
-   ```bash
-   npm run dev
-   ```
+### Option B — GitHub Actions Auto-deploy
 
-4. **Open browser**
-   - Frontend: http://localhost:3001
-   - The app will automatically proxy API requests to the backend
+Add these secrets to your GitHub repo (**Settings → Secrets → Actions**):
+
+| Secret | Where to find it |
+|--------|-----------------|
+| `VERCEL_TOKEN` | vercel.com → Settings → Tokens → Create Token |
+| `VERCEL_ORG_ID` | Run `vercel link` locally → check `.vercel/project.json` |
+| `VERCEL_PROJECT_ID` | Run `vercel link` locally → check `.vercel/project.json` |
+| `VITE_API_BASE_URL` | Your Railway backend URL |
+| `VITE_APP_NAME` | Display name for the client |
+
+Every push to `main` will:
+1. Build and validate the Vite bundle
+2. Deploy to Vercel production (only if build passes)
+
+### Getting Vercel IDs
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Link to your Vercel project (run inside the frontend/ directory)
+vercel link
+
+# This creates .vercel/project.json with orgId and projectId
+cat .vercel/project.json
+```
+
+---
+
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server at `localhost:3001` |
+| `npm run build` | Build production bundle to `dist/` |
+| `npm run preview` | Preview the production build locally |
+
+---
 
 ## Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── components/       # Reusable UI components
-│   │   ├── Button.jsx
-│   │   ├── Card.jsx
-│   │   ├── Input.jsx
-│   │   ├── LoadingSpinner.jsx
-│   │   ├── ProtectedRoute.jsx
-│   │   └── StatCard.jsx
-│   ├── context/          # React Context providers
-│   │   └── AuthContext.jsx
-│   ├── layouts/          # Layout components
-│   │   ├── AdminLayout.jsx
-│   │   ├── InstructorLayout.jsx
-│   │   └── StudentLayout.jsx
-│   ├── pages/            # Page components
-│   │   ├── admin/
-│   │   │   └── AdminDashboard.jsx
-│   │   ├── instructor/
-│   │   │   └── InstructorDashboard.jsx
-│   │   ├── student/
-│   │   │   └── StudentDashboard.jsx
-│   │   ├── ForgotPassword.jsx
-│   │   ├── Login.jsx
-│   │   ├── Register.jsx
-│   │   └── ResetPassword.jsx
-│   ├── services/         # API services
-│   │   └── api.js
-│   ├── utils/            # Utility functions
-│   │   └── roleRedirect.js
-│   ├── App.jsx           # Main app component
-│   ├── main.jsx         # Entry point
-│   └── index.css        # Global styles
-├── index.html
-├── package.json
-├── vite.config.js
-├── tailwind.config.js
-└── postcss.config.js
+│   ├── components/     # Reusable UI components
+│   ├── constants/      # App-wide constants
+│   ├── context/        # React Context providers (AuthContext)
+│   ├── hooks/          # Custom React hooks
+│   ├── layouts/        # Page shells (AdminLayout, StudentLayout, InstructorLayout)
+│   ├── pages/          # Role-based page views (admin/, instructor/, student/)
+│   ├── services/       # API service layer (Axios)
+│   ├── utils/          # Helper functions
+│   ├── App.jsx         # Root component + routes
+│   └── main.jsx        # DOM entry point
+├── .env.example        # Environment variable reference
+├── vercel.json         # Vercel deployment + security headers config
+└── vite.config.js      # Vite configuration
 ```
 
-## Available Scripts
+---
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
+## User Roles
 
-## Authentication Flow
-
-1. **Login** - User enters email/password
-2. **Token Storage** - JWT token stored in localStorage
-3. **Auth Check** - App checks token on mount
-4. **Role Redirect** - User redirected to role-specific dashboard
-5. **Protected Routes** - Routes protected by role guards
-
-## Role-Based Dashboards
-
-### Admin Dashboard
-- Platform statistics
-- User management
-- Course management
-- Instructor management
-- Announcements
-
-### Instructor Dashboard
-- Course statistics
-- My courses list
-- Assessment management
-- Student progress tracking
-
-### Student Dashboard
-- Enrolled courses
-- Progress overview
-- Assessment activity
-- Announcements
-- Notifications
-
-## Color Palette
-
-The app uses a professional color palette:
-- **Primary Blues**: `#cae8ff`, `#b2e4ff`, `#acf4ff`, `#60b9e9`, `#00aeef`
-- **Dark Blues**: `#050a30`, `#1b75bc`
-- **Accent Colors**: `#05c1dd`, `#059aef`, `#05aee5`, `#05d4d8`, `#0484fa`
-
-## API Integration
-
-All API calls are centralized in `src/services/api.js`:
-- `authAPI` - Authentication endpoints
-- `studentAPI` - Student endpoints
-- `adminAPI` - Admin endpoints
-- `instructorAPI` - Instructor endpoints
-
-## Building for Production
-
-```bash
-npm run build
-```
-
-The build output will be in the `dist/` directory.
-
-## Environment Variables
-
-- `VITE_API_BASE_URL` - Backend API base URL (default: `http://localhost:3000/api`)
-
-## Notes
-
-- The frontend runs on port 3001 by default
-- API requests are proxied to the backend during development
-- JWT tokens are stored in localStorage
-- Protected routes automatically redirect unauthorized users
-
+| Role | Access |
+|------|--------|
+| **Admin** | Full platform management dashboard |
+| **Instructor** | Course authoring, assessment management, grading |
+| **Student** | Course consumption, assessments, progress tracking, certificates |

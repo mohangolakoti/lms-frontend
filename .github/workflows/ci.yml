@@ -1,0 +1,48 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  build:
+    name: Build & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+        env:
+          # Use a placeholder URL for CI build validation.
+          # The real value is injected by Vercel at deploy time.
+          VITE_API_BASE_URL: https://placeholder-backend.railway.app/api
+          VITE_APP_NAME: LMS
+          VITE_APP_ENV: production
+
+      - name: Verify dist output
+        run: |
+          test -d dist || (echo "❌ dist/ directory not found — build failed" && exit 1)
+          test -f dist/index.html || (echo "❌ dist/index.html not found" && exit 1)
+          echo "✅ Build output verified"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          retention-days: 3
